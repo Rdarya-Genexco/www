@@ -209,120 +209,303 @@ function start() {
     return g;
   };
 
-  /* ---------- car models (metres; +z is the back of the car, facing the camera) ---------- */
+  /* ---------- car models (metres; +z is the back of the car, facing the camera) ----------
+     Each body is a smooth side profile (spline through the nose, hood, windscreen, roof, rear window and
+     tail) extruded across the car with rounded edges, then narrowed above the waist like a real cabin.
+     L length, W width, r ride height; heights above r: hood, roof, deck; u positions along the car (front
+     is -L/2): ws windscreen base, rf/rr roof front/rear, rw rear window base. */
   const SPEC = {
-    coupe: { w: 1.85, h: 0.62, l: 4.3, cab: [1.5, 1.2, 0.5, 2.2, 1.4, -0.1], ride: 0.32 },
-    hatch: { w: 1.75, h: 0.7, l: 3.9, cab: [1.55, 1.35, 0.62, 2.2, 1.8, 0.1], ride: 0.34 },
-    wedge: { w: 1.95, h: 0.55, l: 4.5, cab: [1.4, 1.0, 0.42, 1.8, 0.9, 0.2], ride: 0.3, wing: 1 },
-    van: { w: 1.9, h: 0.9, l: 4.6, cab: [1.82, 1.72, 0.85, 3.6, 3.4, 0.1], ride: 0.4 },
-    roadster: { w: 1.8, h: 0.55, l: 4.0, cab: null, ride: 0.3 },
-    pickup: { w: 1.95, h: 0.8, l: 4.9, cab: [1.8, 1.6, 0.7, 1.7, 1.5, -1.1], ride: 0.45, bed: 1 },
-    toro: { w: 2.05, h: 0.52, l: 4.6, cab: [1.45, 0.95, 0.42, 2.0, 0.9, 0.25], ride: 0.26, sup: 1, wedge: 1 },
-    rosso: { w: 2.0, h: 0.55, l: 4.6, cab: [1.4, 1.05, 0.45, 2.0, 1.2, 0.1], ride: 0.27, sup: 1 },
+    coupe: {
+      L: 4.4,
+      W: 1.86,
+      r: 0.22,
+      hood: 0.72,
+      roof: 1.3,
+      deck: 0.8,
+      ws: -0.75,
+      rf: -0.1,
+      rr: 0.6,
+      rw: 1.35,
+    },
+    hatch: {
+      L: 3.95,
+      W: 1.78,
+      r: 0.24,
+      hood: 0.74,
+      roof: 1.42,
+      deck: 0.95,
+      ws: -0.75,
+      rf: -0.15,
+      rr: 1.15,
+      rw: 1.75,
+    },
+    wedge: {
+      L: 4.5,
+      W: 1.94,
+      r: 0.2,
+      hood: 0.6,
+      roof: 1.12,
+      deck: 0.78,
+      ws: -0.55,
+      rf: 0.15,
+      rr: 0.7,
+      rw: 1.6,
+      wing: 1,
+    },
+    van: {
+      L: 4.7,
+      W: 1.92,
+      r: 0.28,
+      hood: 0.9,
+      roof: 1.95,
+      deck: 1.4,
+      ws: -1.65,
+      rf: -1.05,
+      rr: 2.15,
+      rw: 2.3,
+    },
+    roadster: {
+      L: 4.1,
+      W: 1.8,
+      r: 0.2,
+      hood: 0.66,
+      roof: 0.98,
+      deck: 0.74,
+      ws: -0.45,
+      rf: -0.15,
+      rr: 0.05,
+      rw: 0.35,
+      open: 1,
+    },
+    pickup: {
+      L: 5.0,
+      W: 1.96,
+      r: 0.34,
+      hood: 0.86,
+      roof: 1.62,
+      deck: 0.92,
+      ws: -0.95,
+      rf: -0.45,
+      rr: 0.35,
+      rw: 0.45,
+      bed: 1,
+    },
+    toro: {
+      L: 4.6,
+      W: 2.04,
+      r: 0.16,
+      hood: 0.5,
+      roof: 1.08,
+      deck: 0.82,
+      ws: -0.75,
+      rf: 0.0,
+      rr: 0.55,
+      rw: 1.75,
+      sup: 1,
+    },
+    rosso: {
+      L: 4.6,
+      W: 2.0,
+      r: 0.17,
+      hood: 0.56,
+      roof: 1.16,
+      deck: 0.84,
+      ws: -0.6,
+      rf: 0.1,
+      rr: 0.65,
+      rw: 1.6,
+      sup: 1,
+    },
     veyra: {
-      w: 2.05,
-      h: 0.62,
-      l: 4.5,
-      cab: [1.5, 1.1, 0.46, 2.0, 1.1, 0.0],
-      ride: 0.27,
+      L: 4.55,
+      W: 2.04,
+      r: 0.18,
+      hood: 0.62,
+      roof: 1.18,
+      deck: 0.92,
+      ws: -0.55,
+      rf: 0.15,
+      rr: 0.7,
+      rw: 1.5,
       sup: 1,
       wing: 2,
-      two: 1,
     },
     phantom: {
-      w: 2.08,
-      h: 0.5,
-      l: 4.7,
-      cab: [1.35, 0.9, 0.42, 1.8, 0.9, 0.3],
-      ride: 0.25,
+      L: 4.7,
+      W: 2.06,
+      r: 0.15,
+      hood: 0.48,
+      roof: 1.04,
+      deck: 0.8,
+      ws: -0.8,
+      rf: -0.05,
+      rr: 0.5,
+      rw: 1.8,
       sup: 1,
       wing: 3,
-      wedge: 1,
     },
   };
+  /* extrude a side profile (u along the car, v up) across width w, centred, rounded, with the cabin narrowed */
+  function sculpt(pts, w, bevel, waist, roofV) {
+    const sh = new THREE.Shape();
+    sh.moveTo(pts[0][0], pts[0][1]);
+    sh.splineThru(pts.slice(1, -1).map(p => new THREE.Vector2(p[0], p[1])));
+    sh.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, {
+      depth: w - bevel * 2,
+      bevelEnabled: true,
+      bevelThickness: bevel,
+      bevelSize: bevel,
+      bevelSegments: 4,
+      curveSegments: 28,
+    });
+    g.translate(0, 0, -(w - bevel * 2) / 2);
+    g.rotateY(-Math.PI / 2);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      if (y > waist) p.setX(i, p.getX(i) * (1 - 0.2 * Math.min(1, (y - waist) / (roofV - waist))));
+    }
+    g.computeVertexNormals();
+    return g;
+  }
   function makeCar(body, col) {
     const s = SPEC[body] || SPEC.coupe,
       g = new THREE.Group(),
       pm = paint(col),
-      by = s.ride + s.h / 2;
-    // body: wedge noses on supercars, a slab elsewhere
-    g.add(
-      s.wedge
-        ? taper(s.w, s.w * 0.92, s.h, s.l, s.l * 0.94, pm, 0, by, 0, 0.1)
-        : rbox(s.w, s.h, s.l, pm, 0, by, 0, s.sup ? 0.2 : 0.14),
-    );
-    if (s.sup) {
-      // haunches over the rear wheels and a dark lower diffuser
-      for (const sx of [-1, 1])
-        g.add(taper(0.36, 0.2, 0.22, 1.4, 1.1, pm, sx * (s.w / 2 - 0.12), s.ride + s.h + 0.08, s.l * 0.22));
-      g.add(box(s.w * 0.86, 0.18, 0.3, M.black, 0, s.ride + 0.08, s.l / 2 - 0.1));
-      for (let i = -3; i <= 3; i++)
-        g.add(box(0.03, 0.16, 0.32, M.black, i * 0.22, s.ride + 0.1, s.l / 2 - 0.05));
-    }
-    if (s.two) g.add(box(s.w * 1.01, s.h * 0.35, s.l * 0.7, M.black, 0, s.ride + s.h * 0.85, -0.2));
-    // cabin: tinted glass with a painted roof
-    if (s.cab) {
-      const [wb, wt, h, lb, lt, z] = s.cab,
-        cy = s.ride + s.h + h / 2;
-      g.add(taper(wb, wt, h, lb, lt, M.glass, 0, cy, z));
-      g.add(box(wt * 0.98, 0.05, lt * 0.98, pm, 0, cy + h / 2, z));
+      { L, W, r } = s,
+      B = s.sup ? 0.14 : 0.12, // rounded edge size: the extrusion grows outward by this much
+      f = -L / 2,
+      b = L / 2,
+      waist = r + Math.max(s.hood, s.deck) + 0.02,
+      mesh = (geo, mat) => {
+        const m = new THREE.Mesh(geo, mat);
+        m.castShadow = true;
+        return m;
+      };
+    // painted body: bumper, nose, hood, windscreen, roof, rear window, deck, tail
+    const top = [
+      [f, r + 0.1],
+      [f + 0.04, r + s.hood * 0.62],
+      [f + 0.5, r + s.hood],
+      [s.ws, r + s.hood + 0.05],
+      [s.rf, r + s.roof],
+      [(s.rf + s.rr) / 2, r + s.roof + 0.03],
+      [s.rr, r + s.roof],
+      [s.rw, r + s.deck + 0.04],
+      [b - 0.3, r + s.deck],
+      [b, r + s.deck * 0.72],
+      [b, r + 0.1],
+    ];
+    if (s.open) top.splice(4, 3, [s.rf, r + s.roof], [s.rr, r + s.deck + 0.12]);
+    g.add(mesh(sculpt(top, W, B, waist, r + s.roof), pm));
+    // greenhouse glass: same lines, slightly proud of the pillars, roof stays painted
+    if (!s.open) {
+      // glass sits just outside the painted greenhouse; a painted roof panel goes back on top
+      const gl = [
+        [s.ws - 0.04, waist - 0.06],
+        [s.ws - 0.03, r + s.hood + 0.07],
+        [s.rf - 0.02, r + s.roof + 0.025],
+        [s.rr + 0.02, r + s.roof + 0.025],
+        [s.rw + 0.04, r + s.deck + 0.07],
+        [s.rw + 0.05, waist - 0.06],
+      ];
+      g.add(mesh(sculpt(gl, W + 0.02, B, waist, r + s.roof), M.glass));
+      const mid = (s.rf + s.rr) / 2,
+        roof = [
+          [s.rf + 0.12, r + s.roof + 0.02],
+          [s.rf + 0.16, r + s.roof + 0.06],
+          [mid, r + s.roof + 0.085],
+          [s.rr - 0.16, r + s.roof + 0.06],
+          [s.rr - 0.12, r + s.roof + 0.02],
+        ];
+      g.add(mesh(sculpt(roof, W - 0.12, 0.05, waist, r + s.roof), pm));
     } else {
-      g.add(box(s.w * 0.86, 0.3, 0.05, M.glass, 0, s.ride + s.h + 0.15, -0.4));
-      g.add(box(0.5, 0.5, 0.5, M.skin, -0.4, s.ride + s.h + 0.1, 0.2));
+      const ws = mesh(
+        sculpt(
+          [
+            [s.rf - 0.05, waist - 0.02],
+            [s.rf - 0.02, waist + 0.05],
+            [s.rf + 0.05, r + s.roof],
+            [s.rf + 0.1, waist - 0.02],
+          ],
+          W * 0.9,
+          0.04,
+          waist,
+          r + s.roof,
+        ),
+        M.glass,
+      );
+      g.add(ws);
+      g.add(box(0.42, 0.42, 0.42, M.skin, -0.42, waist + 0.2, s.rr + 0.15));
     }
-    if (s.bed) g.add(box(s.w * 0.9, 0.08, 1.8, M.black, 0, s.ride + s.h + 0.01, 1.3));
+    // dark sills between the wheels and a lower rear valance
+    g.add(box(W + 0.02, 0.12, L * 0.5, M.black, 0, r - 0.04, 0));
+    if (s.bed) g.add(box(W * 0.84, 0.06, 1.5, M.black, 0, r + s.deck - 0.02, b - 1.0));
+    if (s.sup) {
+      g.add(box(W * 0.84, 0.16, 0.3, M.black, 0, r + 0.1, b - 0.12));
+      for (let i = -3; i <= 3; i++) g.add(box(0.025, 0.14, 0.32, M.black, i * 0.22, r + 0.12, b - 0.06));
+      for (const sx of [-1, 1])
+        g.add(box(0.06, 0.26, 0.9, M.black, sx * (W / 2 - 0.01), r + s.deck * 0.6, 0.6));
+    }
     // rear wing
     if (s.wing) {
-      const wy = s.ride + s.h + (s.wing === 3 ? 0.62 : s.wing === 2 ? 0.45 : 0.28);
-      for (const sx of [-0.55, 0.55])
-        g.add(box(0.06, wy - s.ride - s.h, 0.12, M.black, sx, (wy + s.ride + s.h) / 2, s.l / 2 - 0.3));
+      const wy = r + s.deck + (s.wing === 3 ? 0.55 : s.wing === 2 ? 0.4 : 0.24);
+      for (const sx of [-0.5, 0.5])
+        g.add(box(0.05, wy - r - s.deck, 0.12, M.black, sx, (wy + r + s.deck) / 2, b - 0.35));
       g.add(
-        box(s.w * (s.wing === 3 ? 1.05 : 0.95), 0.05, 0.4, s.wing === 3 ? pm : M.black, 0, wy, s.l / 2 - 0.3),
+        rbox(
+          W * (s.wing === 3 ? 1.04 : 0.92),
+          0.06,
+          0.42,
+          s.wing === 3 ? pm : M.black,
+          0,
+          wy,
+          b - 0.35,
+          0.03,
+        ),
       );
     }
     // lights, plate, exhausts
-    const rz = s.l / 2 + 0.01,
-      ly = s.ride + s.h * 0.7;
-    if (body === 'veyra') g.add(box(s.w * 0.92, 0.05, 0.03, M.tail, 0, s.ride + s.h * 0.82, rz));
+    const rz = b + B + 0.01,
+      ly = r + s.deck * 0.68;
+    if (body === 'veyra') g.add(box(W * 0.8, 0.045, 0.03, M.tail, 0, ly + 0.06, rz));
     else if (body === 'rosso')
-      for (const x of [-0.75, -0.5, 0.5, 0.75]) {
-        const l = cyl(0.09, 0.09, 0.04, M.tail, 14);
+      for (const x of [-0.72, -0.48, 0.48, 0.72]) {
+        const l = cyl(0.085, 0.085, 0.04, M.tail, 16);
         l.rotation.x = Math.PI / 2;
         l.position.set(x, ly, rz);
         g.add(l);
       }
     else if (body === 'toro' || body === 'phantom')
       for (const sx of [-1, 1]) {
-        g.add(box(0.55, 0.04, 0.03, M.tail, sx * 0.62, ly, rz));
-        g.add(box(0.04, 0.2, 0.03, M.tail, sx * 0.62, ly - 0.1, rz));
+        g.add(box(0.5, 0.04, 0.03, M.tail, sx * 0.6, ly, rz));
+        g.add(box(0.04, 0.18, 0.03, M.tail, sx * 0.6, ly - 0.09, rz));
       }
-    else for (const sx of [-1, 1]) g.add(box(0.42, 0.14, 0.03, M.tail, sx * (s.w / 2 - 0.3), ly, rz));
+    else for (const sx of [-1, 1]) g.add(rbox(0.4, 0.13, 0.04, M.tail, sx * (W / 2 - 0.32), ly, rz, 0.03));
     for (const sx of [-1, 1])
-      g.add(box(0.36, 0.1, 0.03, M.head, sx * (s.w / 2 - 0.3), s.ride + s.h * 0.6, -s.l / 2 - 0.01));
-    g.add(box(0.5, 0.14, 0.02, M.plate, 0, s.ride + s.h * 0.35, rz + 0.01));
-    const ex = s.sup ? (body === 'rosso' ? [-0.45, -0.3, 0.3, 0.45] : [0]) : [0.55];
+      g.add(rbox(0.36, 0.1, 0.04, M.head, sx * (W / 2 - 0.32), r + s.hood * 0.6, f - B - 0.01, 0.03));
+    g.add(box(0.5, 0.13, 0.02, M.plate, 0, r + s.deck * 0.38, rz + 0.01));
+    const ex = s.sup ? (body === 'rosso' ? [-0.42, -0.3, 0.3, 0.42] : [0]) : [0.55];
     for (const x of ex) {
-      const e = cyl(
-        s.sup && ex.length === 1 ? 0.12 : 0.05,
-        s.sup && ex.length === 1 ? 0.12 : 0.05,
-        0.2,
-        M.chrome,
-      );
+      const big = s.sup && ex.length === 1,
+        e = cyl(big ? 0.12 : 0.05, big ? 0.12 : 0.05, 0.2, M.chrome, 16);
       e.rotation.x = Math.PI / 2;
-      e.position.set(x, s.ride + 0.12, rz);
+      e.position.set(x, r + 0.14, rz);
       g.add(e);
     }
-    // wheels
-    const r = s.sup ? 0.36 : 0.34,
-      wx = s.w / 2 - 0.12,
-      wz = s.l / 2 - 0.85;
+    // wheels, slightly proud of the body
+    const wr = s.sup ? 0.36 : 0.34,
+      wx = W / 2 - 0.02,
+      wz = L / 2 - 0.85;
     for (const [x, z] of [
       [-wx, -wz],
       [wx, -wz],
       [-wx, wz],
       [wx, wz],
     ])
-      g.add(wheel(r, s.sup ? 0.32 : 0.26, x, z));
+      g.add(wheel(wr, s.sup ? 0.3 : 0.25, x, z));
     g.scale.setScalar(CAR);
     return g;
   }

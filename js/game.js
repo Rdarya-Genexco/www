@@ -4211,7 +4211,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ctx.fillRect(0, 0, W, H);
     if (state === 'count' || goT > 0) {
       const fr = state === 'count' ? cd % 1 : goT / 0.8,
-        t = state === 'count' ? String(Math.ceil(cd)) : 'Go';
+        t = state === 'count' ? String(Math.min(3, Math.ceil(cd))) : 'Go';
       ctx.font =
         '900 ' + Math.round(H * 0.22 * (1 + fr * 0.25)) + "px 'Big Shoulders Display',Impact,sans-serif";
       ctx.textAlign = 'center';
