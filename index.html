@@ -206,12 +206,17 @@ addEventListener('storage',e=>{if(e.key==='ghatrun-profiles'||e.key==='ghatrun-l
 const save=()=>{SS('ghatrun-profiles',profiles);SS('ghatrun-league',league);SS('ghatrun-user',curKey);SS('ghatrun-diff',diffSel);SS('ghatrun-music',musicOn);SS('ghatrun-ctl',ctl);SS('ghatrun-sens',sensSel);SS('ghatrun-riv',rivSel);SS('ghatrun-laps',lapsSel);SS('ghatrun-map',mapSel);cloudPush()};
 /* ---------- online account: same drivers on any browser or device ---------- */
 let cUser=null,cTimer=0,cMsg='';
-function cloudPush(){if(!cUser||!window.cloud)return;clearTimeout(cTimer);cTimer=setTimeout(()=>{window.cloud.save({profiles,curKey}).catch(e=>console.warn('cloud save failed',e))},1200)}
+function cloudPush(){if(!cUser||!window.cloud)return;clearTimeout(cTimer);cTimer=setTimeout(()=>{window.cloud.save({profiles,curKey,league,settings:{diff:diffSel,music:musicOn,riv:rivSel,laps:lapsSel,map:mapSel}}).catch(e=>console.warn('cloud save failed',e))},1200)}
 /* keep whichever copy of each driver has done more (more races, then more points) */
 const better=(a,b)=>!a?b:!b?a:((b.races||0)>(a.races||0)||((b.races||0)===(a.races||0)&&(b.careerPts||0)>(a.careerPts||0)))?b:a;
 async function cloudPull(){try{const d=await window.cloud.load();
   if(d&&d.profiles)for(const k in d.profiles)profiles[k]=better(profiles[k],d.profiles[k]);
   if(d&&d.curKey&&profiles[d.curKey])curKey=d.curKey;
+  /* league: keep whichever copy of each bot has raced more this season */
+  if(d&&d.league&&d.league.bots)for(const k in d.league.bots)league.bots[k]=better(league.bots[k],d.league.bots[k]);
+  /* settings follow the account; steering controls stay per device (touch vs keyboard) */
+  const S=d&&d.settings;if(S){if(S.diff!=null)diffSel=S.diff;if(S.music!=null)musicOn=S.music;if(S.riv!=null)rivSel=S.riv;if(S.laps!=null)lapsSel=S.laps;if(S.map&&MAPS[S.map]&&S.map!==mapSel)loadMap(S.map);muLbl()}
+  ensureBots();
   me=profiles[curKey]||null;if(me){roll(me);applyUp()}save();
   if(typeof state!=='undefined'&&state==='menu')showMenu()}
  catch(e){cMsg='Could not load your online save ('+(e.code||e.message)+')';console.warn(e)}}
@@ -223,7 +228,7 @@ async function cloudGo(how){const em=$('cem'),pw=$('cpw');if(!window.cloud){cMsg
   if(!p){pw.focus();return}cMsg='';await(how==='up'?window.cloud.signUp(e,p):window.cloud.signIn(e,p))}
  catch(x){cMsg=AUTHERR[x.code]||x.message;showCloud(e)}}
 function showCloud(em){
- if(cUser)return ovSet('<h1 class="sm">Online save</h1><p>Signed in as <b>'+esc(cUser.email)+'</b>.</p><span class="hint">Your drivers, points and upgrades are saved online. Sign in with this email on any browser or device to carry on.</span>'+(cMsg?'<span class="hint err">'+esc(cMsg)+'</span>':'')+
+ if(cUser)return ovSet('<h1 class="sm">Online save</h1><p>Signed in as <b>'+esc(cUser.email)+'</b>.</p><span class="hint">Your drivers, points, upgrades, league and settings are saved online. Sign in with this email on any browser or device to carry on.</span>'+(cMsg?'<span class="hint err">'+esc(cMsg)+'</span>':'')+
   '<div class="row"><button class="btn alt" data-a="cout">Sign out</button><button class="btn alt" data-a="menu">Back</button></div>');
  ovSet('<h1 class="sm">Online save</h1><span class="hint">Sign in to keep your drivers and points on any browser or device. Without an account they are only saved in this browser.</span>'+
   '<input id="cem" class="fld" type="email" placeholder="Email" autocomplete="email" aria-label="Email" value="'+esc(em||'')+'">'+
