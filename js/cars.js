@@ -32,6 +32,27 @@ const TOP_SPEEDS = {
   bolide: 300,
 };
 
+/* Engine sound of each car: i4 (four-cylinder buzz), v8 (deep burble), v12 (high howl), w16 (huge roar). */
+const ENGINES = {
+  coupe: 'i4',
+  hatch: 'i4',
+  wedge: 'i4',
+  van: 'i4',
+  roadster: 'i4',
+  pickup: 'v8',
+  toro: 'v12',
+  rosso: 'v12',
+  mclaren720: 'v8',
+  veyra: 'w16',
+  divo: 'w16',
+  phantom: 'v12',
+  senna: 'v8',
+  regera: 'v8',
+  sport300: 'w16',
+  jesko: 'v8',
+  bolide: 'w16',
+};
+
 /* Price of each supercar in points. Starter cars are free. */
 const PRICES = {
   toro: 150,
@@ -228,6 +249,7 @@ const CAR_LIST = [
 /* ---------- derived values (no need to edit below) ---------- */
 for (const c of CAR_LIST) {
   c.price = PRICES[c.id] || 0;
+  c.engine = ENGINES[c.id] || 'i4';
   c.topKmh = Math.min(MAX_KMH, TOP_SPEEDS[c.id] || TOP_SPEEDS.coupe);
   c.stats.speed = c.topKmh / TOP_SPEEDS.coupe; // relative to the starter coupe
   // real names only for cars based on a real model (starters and the concept keep their game name)

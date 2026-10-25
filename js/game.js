@@ -990,9 +990,17 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           home,
           tgtO: home,
           sp: 0,
-          top:
+          // rival pace scales with your car's top speed, so supercar races stay close
+          top: Math.min(
+            CAP * 0.99,
             MAXS *
-            clamp((0.55 + 0.45 * diffSel + b.off) * [0.97, 1, 1.03][(MAPS[mapSel].dif || 2) - 1], 0.4, 1.04),
+              clamp(
+                (0.55 + 0.45 * diffSel + b.off) * [0.97, 1, 1.03][(MAPS[mapSel].dif || 2) - 1],
+                0.4,
+                1.04,
+              ) *
+              Math.max(1, UP.ts),
+          ),
           cu: [0.045, 0.02, 0.03, 0.025, 0.035][i],
           pd: 0,
           fin: false,
@@ -1051,7 +1059,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     if (c.sw > 0) c.sw -= dt;
     const ls = c.tr ? 0.95 : 0.7;
     c.o += clamp(c.tgtO - c.o, -dt * ls, dt * ls);
-    c.sp = Math.max(0, c.sp + clamp(tgt - c.sp, -MAXS * dt, ACC * 0.85 * dt));
+    c.sp = Math.max(0, c.sp + clamp(tgt - c.sp, -MAXS * dt, ACC * 0.85 * Math.max(1, UP.ac) * dt));
     if (seg.ph && seg.ph.length && c.lph !== seg.i) {
       c.lph = seg.i;
       for (const h of seg.ph)
@@ -1109,7 +1117,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   const isSuper = b => SUPER.some(s => s[0] === b);
   const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
   const inp = { L: 0, R: 0, G: 0, B: 0, N: 0, X: 0, D: 0 };
-  let dLock = false,
+  let lv = 0,
+    slip = 0,
+    dLock = false,
     wreck = false,
     lph = -1,
     holes = 0,
@@ -1272,9 +1282,44 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       o1.connect(fl);
       o2.connect(fl);
       fl.connect(ga);
-      ga.connect(ac.destination);
+      // tremolo stage: a low wobble on the volume gives V8s their burble
+      trem = ac.createGain();
+      lfo = ac.createOscillator();
+      lfoG = ac.createGain();
+      lfoG.gain.value = 0;
+      lfo.connect(lfoG);
+      lfoG.connect(trem.gain);
+      ga.connect(trem);
+      trem.connect(ac.destination);
+      // looping noise for tyre squeal and the nitro whoosh
+      const nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate),
+        nd = nb.getChannelData(0);
+      for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+      noise = nb;
+      const ns = ac.createBufferSource();
+      ns.buffer = nb;
+      ns.loop = true;
+      const bp = ac.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 2300;
+      bp.Q.value = 9;
+      sqG = ac.createGain();
+      sqG.gain.value = 0;
+      const hp = ac.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1400;
+      whG = ac.createGain();
+      whG.gain.value = 0;
+      ns.connect(bp);
+      bp.connect(sqG);
+      sqG.connect(ac.destination);
+      ns.connect(hp);
+      hp.connect(whG);
+      whG.connect(ac.destination);
+      ns.start();
       o1.start();
       o2.start();
+      lfo.start();
       mg = ac.createGain();
       mg.gain.value = 0.07;
       mg.connect(ac.destination);
@@ -1353,16 +1398,57 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   setInterval(syncSong, 100);
   /* browsers (iPhone/Safari especially) only allow sound to start inside a tap or key press, so try to start the song right there */
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach(t => addEventListener(t, () => syncSong(), true));
+  /* engine character per car (js/cars.js ENGINES): pitch, second voice ratio and wave, brightness, burble */
+  const ENG = {
+    i4: { p: 1, w2: 'square', r: 0.5, f: 1, b: 0 },
+    v8: { p: 0.72, w2: 'square', r: 0.5, f: 0.75, b: 0.45 },
+    v12: { p: 1.45, w2: 'sawtooth', r: 2.01, f: 1.7, b: 0 },
+    w16: { p: 0.85, w2: 'sawtooth', r: 0.5, f: 1.15, b: 0.18 },
+  };
+  const ENGINE_OF = Object.fromEntries(window.CAR_LIST.map(c => [c.id, c.engine]));
+  let trem, lfo, lfoG, noise, sqG, whG, engType;
+  /* crunch: a short burst of filtered noise */
+  function crashSnd(v = 0.5) {
+    if (!ac || muted || !noise) return;
+    const s = ac.createBufferSource(),
+      f = ac.createBiquadFilter(),
+      g = ac.createGain(),
+      t = ac.currentTime;
+    s.buffer = noise;
+    f.type = 'lowpass';
+    f.frequency.value = 900;
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    s.connect(f);
+    f.connect(g);
+    g.connect(ac.destination);
+    s.start(t, Math.random());
+    s.stop(t + 0.5);
+  }
   function snd() {
     if (!ac) return;
+    const body = loginOpen || !me ? selBody : me.body,
+      E = ENG[ENGINE_OF[body]] || ENG.i4;
+    if (engType !== E) {
+      engType = E;
+      o2.type = E.w2;
+    }
     const t = ac.currentTime,
       sg = Math.min(5.99, (speed / MAXS) * 6),
       gr = Math.floor(sg),
       rp = sg - gr,
-      fq = 48 + rp * 95 + gr * 10 + boost * 25;
+      fq = (48 + rp * 95 + gr * 10 + boost * 25) * E.p;
     o1.frequency.setTargetAtTime(fq, t, 0.02);
-    o2.frequency.setTargetAtTime(fq * 0.5, t, 0.02);
-    fl.frequency.setTargetAtTime(350 + rp * 700 + boost * 900, t, 0.05);
+    o2.frequency.setTargetAtTime(fq * E.r, t, 0.02);
+    fl.frequency.setTargetAtTime((350 + rp * 700 + boost * 900) * E.f, t, 0.05);
+    lfo.frequency.setTargetAtTime(fq * 0.25, t, 0.05);
+    lfoG.gain.setTargetAtTime(E.b * 0.5, t, 0.1);
+    trem.gain.setTargetAtTime(1 - E.b * 0.5, t, 0.1);
+    // tyres squeal when sliding or drifting; nitro hisses
+    const racing = state === 'race' && !muted,
+      sq = racing ? Math.min(1, Math.max(0, Math.abs(slip) - 0.5) * 0.8 + (drifting ? 0.5 : 0)) : 0;
+    sqG.gain.setTargetAtTime(sq * 0.05, t, 0.05);
+    whG.gain.setTargetAtTime(racing ? boost * 0.05 : 0, t, 0.08);
     ga.gain.setTargetAtTime(
       muted ? 0 : state === 'menu' ? 0.015 : 0.06 + (gasOn ? 0.04 : 0) + boost * 0.04,
       t,
@@ -1476,6 +1562,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     dmg = 0;
     lph = -1;
     holes = 0;
+    lv = 0;
+    slip = 0;
     wreck = false;
     dLock = false;
     document.querySelector('#tc [data-k=D]').classList.remove('on');
@@ -1950,6 +2038,26 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           )
           .join('') +
         '</div>' +
+        (window.view3d && window.view3d.ready
+          ? '<div class="chips">Graphics ' +
+            [
+              ['auto', 'Auto'],
+              ['high', 'High'],
+              ['low', 'Low'],
+            ]
+              .map(
+                q =>
+                  '<button class="chip' +
+                  (window.view3d.quality === q[0] ? ' on' : '') +
+                  '" data-a="gfx" data-v="' +
+                  q[0] +
+                  '">' +
+                  q[1] +
+                  '</button>',
+              )
+              .join('') +
+            '</div>'
+          : '') +
         '<div class="chips">Music <button class="chip' +
         (musicOn ? ' on' : '') +
         '" data-a="music">' +
@@ -2516,6 +2624,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ov.querySelectorAll('[data-a=body]').forEach(s => s.classList.toggle('on', s.dataset.v === v));
       const cd = $('cdesc');
       if (cd) cd.textContent = CARS[v].d;
+    } else if (a === 'gfx') {
+      window.view3d.setQuality(v);
+      showSettings();
     } else if (a === 'pv') {
       pvBody = v;
       showroom3d();
@@ -2634,11 +2745,21 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       boost = bo ? Math.min(1, boost + dt * 4) : Math.max(0, boost - dt * 4);
       const DR = !!D && sf > 0.4 && (Math.abs(steer) > 0.25 || Math.abs(seg.c) > 1.2);
       drifting = DR;
-      const dxs = dt * 2.4 * sf * UP.hd * (DR ? 1.25 : 1);
-      if (L) px -= dxs;
-      if (R) px += dxs;
-      px += X * dxs;
-      px -= (dxs * sf * seg.c * 0.22 * (TH.rain || wx ? 1.12 : 1) * (DR ? 0.4 : 1)) / UP.hd;
+      /* tyres and momentum: steering and the bend set where the car wants to go sideways (aim); grip decides
+         how fast the car's actual sideways speed (lv) follows. Low grip = the car slides wide */
+      const wet = TH.rain || wx,
+        off = Math.abs(px) > 1.05,
+        stIn = (R ? 1 : 0) - (L ? 1 : 0) + X,
+        aim =
+          stIn * 2.4 * sf * UP.hd * (DR ? 1.25 : 1) -
+          (2.4 * sf * sf * seg.c * 0.22 * (wet ? 1.12 : 1) * (DR ? 0.4 : 1)) / UP.hd,
+        grip =
+          (off ? 0.45 : 1) * (wet ? 0.7 : 1) * (DR ? 0.6 : 1) * (1 + 0.12 * UP.gr) * Math.min(1.3, UP.hd);
+      lv += (aim - lv) * Math.min(1, dt * 9 * grip);
+      slip = aim - lv;
+      px += lv * dt;
+      // scrubbing sideways costs a little speed
+      speed -= Math.min(Math.abs(slip), 2) * MAXS * 0.03 * dt;
       if (G) speed += ACC * UP.ac * dt;
       else if (!B) speed += DEC * dt * (state === 'done' ? 2 : 1);
       if (B) speed += BRK * dt;
@@ -2705,6 +2826,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
             vib(60);
             holes++;
             toast('Pothole', 1);
+            crashSnd(0.18);
             blip(70, 0.18, 'square', 0.14);
             const pw = Math.min(W * 0.24, H * 0.42);
             sparks.push({
@@ -2799,6 +2921,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
             1,
           );
           blip(90, 0.3, 'sawtooth');
+          crashSnd(0.6);
+          lv *= -0.3; // bounce off sideways
           spark(W / 2, H * 0.9, 24, 520);
         } else if (c.rv && c.tr === 'swipe' && !(c.sw > 0) && Math.abs(dz) < SL * 1.2 && dxo < 0.3) {
           c.sw = 1.2;
@@ -2809,6 +2933,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           shake = reduce ? 0 : 6;
           toast('Side swipe', 1);
           blip(150, 0.15, 'sawtooth');
+          crashSnd(0.25);
           spark(W / 2, H * 0.92, 10, 300);
         }
         if (c.pd > 0 && dz <= 0 && c.pd < SL * 6 && dxo < 0.6) {
@@ -4281,6 +4406,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     },
     get drift() {
       return da;
+    },
+    get slip() {
+      return slip;
     },
     get boost() {
       return boost;

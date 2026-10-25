@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const G = window.__game;
+const clamp3 = (v, a, b) => Math.max(a, Math.min(b, v));
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
 /* FS is set so the motion on screen matches the speedometer (260 km/h at full speed) */
 const FS = window.SPEED.base / 3.6 / 12000,
@@ -699,6 +700,68 @@ function start() {
     return s;
   }
 
+  /* ---------- surface textures, drawn once in code (no image downloads) ---------- */
+  function canvasTex(draw, size = 256) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    draw(c.getContext('2d'), size);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    return t;
+  }
+  const TEX = {
+    // asphalt: fine grain, darker tar patches and a few hairline cracks (kept light: it tints the road colour)
+    asphalt: canvasTex((x, n) => {
+      x.fillStyle = '#d8d8d8';
+      x.fillRect(0, 0, n, n);
+      for (let i = 0; i < 9000; i++) {
+        const v = 150 + Math.random() * 105;
+        x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+        x.fillRect(Math.random() * n, Math.random() * n, 1 + Math.random(), 1 + Math.random());
+      }
+      for (let i = 0; i < 14; i++) {
+        x.fillStyle = 'rgba(90,90,90,.12)';
+        x.beginPath();
+        x.ellipse(
+          Math.random() * n,
+          Math.random() * n,
+          10 + Math.random() * 30,
+          6 + Math.random() * 18,
+          Math.random() * 3,
+          0,
+          7,
+        );
+        x.fill();
+      }
+      x.strokeStyle = 'rgba(70,70,70,.35)';
+      for (let i = 0; i < 3; i++) {
+        x.beginPath();
+        let px = Math.random() * n,
+          py = Math.random() * n;
+        x.moveTo(px, py);
+        for (let k = 0; k < 6; k++) x.lineTo((px += (Math.random() - 0.5) * 30), (py += Math.random() * 20));
+        x.stroke();
+      }
+    }),
+    // grass: mottled tones with short blade strokes
+    grass: canvasTex((x, n) => {
+      x.fillStyle = '#e4e4e4';
+      x.fillRect(0, 0, n, n);
+      for (let i = 0; i < 2200; i++) {
+        const v = 170 + Math.random() * 85,
+          px = Math.random() * n,
+          py = Math.random() * n;
+        x.strokeStyle = 'rgb(' + (v - 10) + ',' + v + ',' + (v - 20) + ')';
+        x.beginPath();
+        x.moveTo(px, py);
+        x.lineTo(px + (Math.random() - 0.5) * 3, py - 3 - Math.random() * 5);
+        x.stroke();
+      }
+    }),
+  };
+
   /* ---------- world: built from the game's track whenever the map changes ---------- */
   let world = null,
     builtVer = -1,
@@ -765,10 +828,18 @@ function start() {
     function ribbon(o1, o2, colorOf, yOff = 0, keep = () => true, drop = 0) {
       const pos = [],
         col = [],
-        c = new THREE.Color();
+        uv = [],
+        c = new THREE.Color(),
+        seg = SL * FS; // metres per segment
       for (let i = 0; i < N; i++) {
         const s = segs[i];
         if (!keep(s)) continue;
+        // texture coordinates in metres / 3, so textures keep their real-world size
+        const u1 = (o1 * W) / 3,
+          u2 = (o2 * W) / 3,
+          v1 = (i * seg) / 3,
+          v2 = ((i + 1) * seg) / 3;
+        uv.push(u1, v1, u1, v2, u2, v1, u2, v1, u1, v2, u2, v2);
         const a = P[i],
           b = P[(i + 1) % N];
         const pt = (p, o) => [
@@ -787,14 +858,16 @@ function start() {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
       g.computeVertexNormals();
       return g;
     }
-    const vmat = (rough, metal = 0) =>
+    const vmat = (rough, metal = 0, map = null) =>
       new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: rough,
         metalness: metal,
+        map,
         side: THREE.DoubleSide,
       });
     const add = (geo, mat, recv = true) => {
@@ -806,7 +879,7 @@ function start() {
     const wet = TH.rain;
     add(
       ribbon(-1, 1, s => (s.i < 4 ? TH.road[0] : TH.road[s.k])),
-      vmat(wet ? 0.35 : 0.88, wet ? 0.3 : 0),
+      vmat(wet ? 0.35 : 0.88, wet ? 0.3 : 0, TEX.asphalt),
     );
     add(
       ribbon(-1.17, -1, s => (s.i < 4 ? '#fff4e0' : TH.rum[s.k]), 0.015),
@@ -836,7 +909,7 @@ function start() {
         () => true,
         -1,
       ),
-      vmat(1),
+      vmat(1, 0, TEX.grass),
     );
     add(
       ribbon(
@@ -847,9 +920,15 @@ function start() {
         () => true,
         1,
       ),
-      vmat(1),
+      vmat(1, 0, TEX.grass),
     );
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), flat(TH.grass[1]));
+    const gt = TEX.grass.clone();
+    gt.repeat.set(1500, 1500);
+    gt.needsUpdate = true;
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(9000, 9000),
+      new THREE.MeshStandardMaterial({ color: TH.grass[1], map: gt, roughness: 1 }),
+    );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(cx, minY - 0.6, cz);
     ground.receiveShadow = true;
@@ -1183,6 +1262,7 @@ function start() {
       dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
     if (active()) return showroom(dt);
+    watchFps(dt);
     const pos = G.pos,
       px = G.px,
       sf = G.speed;
@@ -1199,7 +1279,14 @@ function start() {
       scene.add(player);
       playerKey = key;
     }
-    place(player, pos + G.PZ, px, -G.steer * 0.07 * sf - G.drift * 0.35, G.steer * 0.025 * sf);
+    // body yaw follows steering and drift, and swings out when the tyres slide (slip); it leans into turns
+    place(
+      player,
+      pos + G.PZ,
+      px,
+      -G.steer * 0.07 * sf - G.drift * 0.35 + clamp3(G.slip * 0.12, -0.35, 0.35),
+      G.steer * 0.025 * sf + clamp3(G.slip * 0.02, -0.06, 0.06),
+    );
     spin(player, sf * dt * 60);
 
     // rivals, traffic and hazards
@@ -1380,6 +1467,67 @@ function start() {
     scomp.render();
   }
 
-  window.view3d = { ready: true, frame, showroom: null, track: () => P };
+  /* ---------- graphics quality: 'auto' measures the frame rate early in a race and drops shadows,
+     glow and resolution if the device can't keep up; 'high' / 'low' force it (Settings) ---------- */
+  const LSget = (k, d) => {
+    try {
+      const v = localStorage.getItem(k);
+      return v == null ? d : JSON.parse(v);
+    } catch (e) {
+      return d;
+    }
+  };
+  let quality = LSget('ghatrun-gfx', 'auto'),
+    autoLow = LSget('ghatrun-gfx-autolow', false),
+    fpsN = 0,
+    fpsT = 0,
+    measured = false;
+  function applyQuality() {
+    const low = quality === 'low' || (quality === 'auto' && autoLow);
+    renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, coarse ? 1.25 : 1.75));
+    renderer.shadowMap.enabled = !low;
+    sunLight.castShadow = !low;
+    bloom.enabled = !low;
+    composer.setPixelRatio(renderer.getPixelRatio());
+    scomp.setPixelRatio(renderer.getPixelRatio());
+    scene.traverse(o => {
+      if (o.material) o.material.needsUpdate = true;
+    });
+  }
+  function watchFps(dt) {
+    if (quality !== 'auto' || autoLow || measured || G.state !== 'race' || !dt) return;
+    fpsN++;
+    fpsT += dt;
+    if (fpsT > 4) {
+      if (fpsN / fpsT < 38) {
+        autoLow = true;
+        try {
+          localStorage.setItem('ghatrun-gfx-autolow', 'true');
+        } catch (e) {}
+        applyQuality();
+      }
+      measured = true; // once per visit is enough
+    }
+  }
+  applyQuality();
+
+  window.view3d = {
+    ready: true,
+    frame,
+    showroom: null,
+    track: () => P,
+    setQuality(q) {
+      quality = q;
+      if (q !== 'auto') autoLow = false;
+      try {
+        localStorage.setItem('ghatrun-gfx', JSON.stringify(q));
+        localStorage.setItem('ghatrun-gfx-autolow', JSON.stringify(autoLow));
+      } catch (e) {}
+      applyQuality();
+    },
+    get quality() {
+      return quality;
+    },
+  };
   document.body.classList.add('gl');
 }

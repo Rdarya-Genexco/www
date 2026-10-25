@@ -31,6 +31,13 @@ then open http://localhost:8000. Opening `index.html` straight from disk runs th
 
 The game runs in 3D through WebGL. On devices without WebGL, `view3d.js` never starts and `game.js` keeps drawing the original 2D pseudo-3D road, so the game always works.
 
+## Driving and sound
+
+- Cars have sideways momentum and grip: steering and bends set where the car wants to go, and grip decides how quickly it follows. Rain, grass, drifting and too much speed in a bend reduce grip, so the car slides wide. Sliding scrubs speed and the body swings out in 3D.
+- Rival bots scale their pace and acceleration to the car you drive, so races stay close in a supercar.
+- Each car has an engine sound (`ENGINES` in `js/cars.js`: i4, v8, v12, w16), plus tyre squeal, crash crunch and a nitro hiss.
+- Graphics quality (Settings): Auto measures the frame rate early in the first race and switches off shadows and glow and lowers resolution if the device struggles; High and Low force it.
+
 ## Saves
 
 Progress is saved in the browser (localStorage keys starting with `ghatrun-`). When a player signs in, their drivers, points, upgrades, league and settings are also stored in Firestore at `players/{uid}` and merged on each sign-in. Steering controls stay per device.
@@ -63,6 +70,7 @@ All cars live in `js/cars.js`. The top of that file has the settings you're most
 - `USE_REAL_NAMES`: `false` shows the game names, `true` shows the real car names. Currently on (the game shows real names); real brand names are trademarks.
 - `MAX_KMH`: the hard speed limit (300).
 - `TOP_SPEEDS`: each car's top speed in km/h.
+- `ENGINES`: each car's engine sound.
 - `PRICES`: the points each supercar costs.
 - `CAR_LIST`: each car's `name`, `realName`, `stats`, `desc`, 3D `shape` and `style`.
 
