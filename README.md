@@ -60,7 +60,7 @@ Arrow keys steer, Up/W gas, Down/S brake, Space nitro, D drift on/off, Z/C hold 
 
 All cars live in `js/cars.js`. The top of that file has the settings you're most likely to change:
 
-- `USE_REAL_NAMES`: `false` shows the game names, `true` shows the real car names. Off by default, because real brand names are trademarks.
+- `USE_REAL_NAMES`: `false` shows the game names, `true` shows the real car names. Currently on (the game shows real names); real brand names are trademarks.
 - `PRICES`: the points each supercar costs.
 - `CAR_LIST`: each car's `name`, `realName`, `stats`, `desc`, 3D `shape` and `style`.
 
