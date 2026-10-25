@@ -604,7 +604,7 @@ function hud2(){
  const rk=ranking(),i=rk.findIndex(r=>r.me);placeNow=i;
  $('pos').textContent=ORD[i]+' of '+rk.length;
  const tot=LAPS*TL;let g='';
- if(i>0&&!rk[i].fin)g='+'+((rk[0].d-rk[i].d)/tot*100).toFixed(1)+'% behind';
+ if(i>0&&!rk[i].fin)g='+'+((Math.min(rk[0].d,tot)-rk[i].d)/tot*100).toFixed(1)+'% behind';
  else if(i===0&&rk.length>1&&!rk[i].fin)g='+'+((rk[0].d-rk[1].d)/tot*100).toFixed(1)+'% ahead';
  $('gap').textContent=g;
  $('st').innerHTML=rk.map((r,j)=>'<div class="'+(r.me?'me':'')+'"><span>'+(j+1)+' '+esc(r.name)+'</span><i style="background:'+r.col+'"></i></div>').join('')}
