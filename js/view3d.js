@@ -44,7 +44,7 @@ function start() {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.45, 0.96);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.4, 0.45, 0.98);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
@@ -118,9 +118,17 @@ function start() {
   const M = {
     rubber: new THREE.MeshStandardMaterial({ color: 0x141218, roughness: 0.85 }),
     rim: new THREE.MeshStandardMaterial({ color: 0xb8bcc8, metalness: 1, roughness: 0.25 }),
-    glass: new THREE.MeshPhysicalMaterial({ color: 0x0b0a14, metalness: 0.2, roughness: 0.05, clearcoat: 1 }),
+    glass: new THREE.MeshPhysicalMaterial({
+      color: 0x0b0a14,
+      metalness: 0,
+      roughness: 0.32,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.3,
+      envMapIntensity: 0.5,
+      specularIntensity: 0.4,
+    }),
     tail: new THREE.MeshStandardMaterial({ color: 0xff2030, emissive: 0xff1020, emissiveIntensity: 1.4 }),
-    head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d0, emissiveIntensity: 1.2 }),
+    head: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2d0, emissiveIntensity: 0.55 }),
     black: new THREE.MeshStandardMaterial({ color: 0x0e0d14, roughness: 0.6 }),
     chrome: new THREE.MeshStandardMaterial({ color: 0x9a9aa8, metalness: 1, roughness: 0.2 }),
     plate: new THREE.MeshStandardMaterial({ color: 0xe8e2cf, roughness: 0.5 }),
@@ -150,9 +158,9 @@ function start() {
         new THREE.MeshPhysicalMaterial({
           color: col,
           metalness: 0.25,
-          roughness: 0.32,
-          clearcoat: 1,
-          clearcoatRoughness: 0.06,
+          roughness: 0.36,
+          clearcoat: 0.8,
+          clearcoatRoughness: 0.18,
         }),
       );
     return paintCache.get(col);
@@ -201,9 +209,18 @@ function start() {
     const g = new THREE.Group();
     const t = cyl(r, r, wdt, M.rubber, 20);
     t.rotation.z = Math.PI / 2;
-    const h = cyl(r * 0.62, r * 0.62, wdt * 1.02, M.rim, 10);
+    const h = cyl(r * 0.66, r * 0.66, wdt * 1.02, M.black, 20);
     h.rotation.z = Math.PI / 2;
     g.add(t, h);
+    // five-spoke rim on the outer face
+    for (let i = 0; i < 5; i++) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(wdt * 1.06, r * 1.25, r * 0.12), M.rim);
+      sp.rotation.x = (i / 5) * Math.PI * 2;
+      g.add(sp);
+    }
+    const hub = cyl(r * 0.16, r * 0.16, wdt * 1.1, M.rim, 10);
+    hub.rotation.z = Math.PI / 2;
+    g.add(hub);
     g.position.set(x, r, z);
     g.userData.spin = true;
     return g;
@@ -291,62 +308,78 @@ function start() {
       bed: 1,
     },
     toro: {
-      L: 4.6,
-      W: 2.04,
-      r: 0.16,
-      hood: 0.5,
-      roof: 1.08,
-      deck: 0.82,
-      ws: -0.75,
-      rf: 0.0,
-      rr: 0.55,
-      rw: 1.75,
+      L: 4.7,
+      W: 2.06,
+      r: 0.14,
+      hood: 0.38,
+      roof: 0.98,
+      deck: 0.6,
+      ws: -0.85,
+      rf: -0.15,
+      rr: 0.3,
+      rw: 0.95,
       sup: 1,
+      wing: 2,
+      flare: 0.08,
+      acc: '#f2c418',
+      cal: '#f2c418',
     },
     rosso: {
-      L: 4.6,
-      W: 2.0,
-      r: 0.17,
-      hood: 0.56,
-      roof: 1.16,
-      deck: 0.84,
-      ws: -0.6,
-      rf: 0.1,
+      L: 4.65,
+      W: 2.02,
+      r: 0.16,
+      hood: 0.46,
+      roof: 1.06,
+      deck: 0.66,
+      ws: -0.45,
+      rf: 0.15,
       rr: 0.65,
-      rw: 1.6,
+      rw: 1.25,
       sup: 1,
+      flare: 0.07,
+      cal: '#f2c418',
     },
     veyra: {
       L: 4.55,
-      W: 2.04,
-      r: 0.18,
-      hood: 0.62,
-      roof: 1.18,
-      deck: 0.92,
+      W: 2.06,
+      r: 0.17,
+      hood: 0.52,
+      roof: 1.08,
+      deck: 0.72,
       ws: -0.55,
-      rf: 0.15,
-      rr: 0.7,
-      rw: 1.5,
+      rf: 0.0,
+      rr: 0.55,
+      rw: 1.1,
       sup: 1,
       wing: 2,
+      flare: 0.05,
+      acc: '#5fd0ff',
+      two: 1,
     },
     phantom: {
-      L: 4.7,
-      W: 2.06,
-      r: 0.15,
-      hood: 0.48,
-      roof: 1.04,
-      deck: 0.8,
-      ws: -0.8,
-      rf: -0.05,
-      rr: 0.5,
-      rw: 1.8,
+      L: 4.95,
+      W: 2.08,
+      r: 0.13,
+      hood: 0.36,
+      roof: 0.96,
+      deck: 0.58,
+      ws: -0.95,
+      rf: -0.3,
+      rr: 0.2,
+      rw: 1.0,
       sup: 1,
       wing: 3,
+      flare: 0.09,
+      tumble: 0.4,
+      acc: '#4db8ff',
+      fin: 1,
     },
   };
   /* extrude a side profile (u along the car, v up) across width w, centred, rounded, with the cabin narrowed */
-  function sculpt(pts, w, bevel, waist, roofV) {
+  function sculpt(pts, w, bevel, waist, roofV, opt = {}) {
+    const tumble = opt.tumble ?? 0.2,
+      flare = opt.flare || 0,
+      fz = opt.flareZ || 0;
     const sh = new THREE.Shape();
     sh.moveTo(pts[0][0], pts[0][1]);
     sh.splineThru(pts.slice(1, -1).map(p => new THREE.Vector2(p[0], p[1])));
@@ -364,8 +397,11 @@ function start() {
     g.rotateY(-Math.PI / 2);
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
-      const y = p.getY(i);
-      if (y > waist) p.setX(i, p.getX(i) * (1 - 0.2 * Math.min(1, (y - waist) / (roofV - waist))));
+      const y = p.getY(i),
+        z = p.getZ(i);
+      if (y > waist) p.setX(i, p.getX(i) * (1 - tumble * Math.min(1, (y - waist) / (roofV - waist))));
+      // wide hips over the rear wheels
+      else if (flare) p.setX(i, p.getX(i) * (1 + flare * Math.exp(-(((z - fz) / 0.75) ** 2))));
     }
     g.computeVertexNormals();
     return g;
@@ -399,7 +435,8 @@ function start() {
       [b, r + 0.1],
     ];
     if (s.open) top.splice(4, 3, [s.rf, r + s.roof], [s.rr, r + s.deck + 0.12]);
-    g.add(mesh(sculpt(top, W, B, waist, r + s.roof), pm));
+    const so = { tumble: s.tumble, flare: s.flare, flareZ: L / 2 - 0.85 };
+    g.add(mesh(sculpt(top, W, B, waist, r + s.roof, so), pm));
     // greenhouse glass: same lines, slightly proud of the pillars, roof stays painted
     if (!s.open) {
       // glass sits just outside the painted greenhouse; a painted roof panel goes back on top
@@ -411,7 +448,7 @@ function start() {
         [s.rw + 0.04, r + s.deck + 0.07],
         [s.rw + 0.05, waist - 0.06],
       ];
-      g.add(mesh(sculpt(gl, W + 0.02, B, waist, r + s.roof), M.glass));
+      g.add(mesh(sculpt(gl, W + 0.02, B, waist, r + s.roof, so), M.glass));
       const mid = (s.rf + s.rr) / 2,
         roof = [
           [s.rf + 0.12, r + s.roof + 0.02],
@@ -420,7 +457,12 @@ function start() {
           [s.rr - 0.16, r + s.roof + 0.06],
           [s.rr - 0.12, r + s.roof + 0.02],
         ];
-      g.add(mesh(sculpt(roof, W - 0.12, 0.05, waist, r + s.roof), pm));
+      g.add(
+        mesh(
+          sculpt(roof, W - 0.12 - (s.tumble ? 0.25 : 0), 0.05, waist, r + s.roof, so),
+          s.two ? M.black : pm,
+        ),
+      );
     } else {
       const ws = mesh(
         sculpt(
@@ -443,7 +485,37 @@ function start() {
     // dark sills between the wheels and a lower rear valance
     g.add(box(W + 0.02, 0.12, L * 0.5, M.black, 0, r - 0.04, 0));
     if (s.bed) g.add(box(W * 0.84, 0.06, 1.5, M.black, 0, r + s.deck - 0.02, b - 1.0));
+    const acc =
+      s.acc &&
+      new THREE.MeshStandardMaterial({
+        color: s.acc,
+        emissive: s.acc,
+        emissiveIntensity: s.acc === '#f2c418' ? 0.25 : 1.6,
+      });
     if (s.sup) {
+      // front splitter and carbon side skirts
+      g.add(box(W * 0.92, 0.04, 0.34, M.black, 0, r + 0.02, f - B + 0.1));
+      for (const sx of [-1, 1]) g.add(box(0.05, 0.12, L * 0.45, M.black, sx * (W / 2 + 0.02), r + 0.05, 0));
+      if (s.two) {
+        // two-tone: glowing C-curve along each side
+        for (const sx of [-1, 1]) {
+          const c = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.022, 6, 24, Math.PI * 1.15), acc);
+          c.rotation.set(0, Math.PI / 2, Math.PI * 0.42);
+          c.position.set(sx * (W / 2 + 0.03), r + 0.42, -0.25);
+          g.add(c);
+        }
+      }
+      if (s.fin) {
+        // shark fin along the spine and glowing lower accents
+        g.add(taper(0.04, 0.02, 0.26, 2.2, 1.6, M.black, 0, r + s.deck + 0.1, 1.0, 0.25));
+        for (const sx of [-1, 1]) g.add(box(0.02, 0.025, L * 0.5, acc, sx * (W / 2 + 0.05), r + 0.12, -0.2));
+      }
+      if (body === 'toro') {
+        // open rear grille with yellow fins
+        g.add(box(W * 0.78, s.deck * 0.36, 0.04, M.black, 0, r + s.deck * 0.3, b + B));
+        for (let i = -3; i <= 3; i++)
+          g.add(box(0.035, s.deck * 0.34, 0.08, acc, i * 0.22, r + s.deck * 0.3, b + B + 0.02));
+      }
       g.add(box(W * 0.84, 0.16, 0.3, M.black, 0, r + 0.1, b - 0.12));
       for (let i = -3; i <= 3; i++) g.add(box(0.025, 0.14, 0.32, M.black, i * 0.22, r + 0.12, b - 0.06));
       for (const sx of [-1, 1])
@@ -478,7 +550,8 @@ function start() {
         l.position.set(x, ly, rz);
         g.add(l);
       }
-    else if (body === 'toro' || body === 'phantom')
+    else if (body === 'phantom') g.add(box(W * 0.9, 0.035, 0.03, M.tail, 0, ly + 0.08, rz));
+    else if (body === 'toro')
       for (const sx of [-1, 1]) {
         g.add(box(0.5, 0.04, 0.03, M.tail, sx * 0.6, ly, rz));
         g.add(box(0.04, 0.18, 0.03, M.tail, sx * 0.6, ly - 0.09, rz));
@@ -499,13 +572,17 @@ function start() {
     const wr = s.sup ? 0.36 : 0.34,
       wx = W / 2 - 0.02,
       wz = L / 2 - 0.85;
+    const cm = s.cal ? flat(s.cal) : s.sup ? flat('#c0262d') : null;
     for (const [x, z] of [
       [-wx, -wz],
       [wx, -wz],
       [-wx, wz],
       [wx, wz],
-    ])
+    ]) {
       g.add(wheel(wr, s.sup ? 0.3 : 0.25, x, z));
+      // brake calipers behind the spokes
+      if (cm) g.add(box(0.06, wr * 0.55, wr * 0.5, cm, x - Math.sign(x) * 0.02, wr + wr * 0.2, z + 0.08));
+    }
     g.scale.setScalar(CAR);
     return g;
   }
@@ -996,7 +1073,7 @@ function start() {
     scene.fog = new THREE.Fog(TH.fog, 70, night ? 520 : 650);
     scene.background = new THREE.Color(TH.fog);
     sunLight.color.set(night ? 0x8fa0ff : TH.sun[1]);
-    sunLight.intensity = night ? 0.5 : 2.4;
+    sunLight.intensity = night ? 0.5 : 1.9;
     hemi.color.set(S[1]);
     hemi.groundColor.set(TH.grass[0]);
     hemi.intensity = night ? 0.55 : 0.95;
@@ -1111,7 +1188,14 @@ function start() {
     camera.lookAt(look);
     const sh = G.reduce ? 0 : G.shake * 0.012;
     if (sh) camera.position.add(new THREE.Vector3((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, 0));
-    const fov = 60 + sf * 8 + G.boost * 10;
+    // optional orbit camera around the player's car (view3d.orbit = { a: angle, d: distance, h: height })
+    const ob = window.view3d.orbit;
+    if (ob) {
+      const c = player.position;
+      camera.position.set(c.x + Math.sin(ob.a) * ob.d, c.y + ob.h, c.z + Math.cos(ob.a) * ob.d);
+      camera.lookAt(c.x, c.y + 0.9, c.z);
+    }
+    const fov = ob ? 40 : 60 + sf * 8 + G.boost * 10;
     if (Math.abs(camera.fov - fov) > 0.05) {
       camera.fov += (fov - camera.fov) * Math.min(1, dt * 4);
       camera.updateProjectionMatrix();
