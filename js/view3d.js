@@ -11,9 +11,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const G = window.__game;
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
-const FS = 0.01,
+/* FS is set so the motion on screen matches the speedometer (260 km/h at full speed) */
+const FS = 0.006,
   LS = 0.005,
-  YS = 0.003,
+  YS = 0.0016,
   CAR = 1.35; // car models are scaled up to match the game's wide lanes
 const coarse = matchMedia('(pointer:coarse)').matches;
 
@@ -134,7 +135,6 @@ function start() {
     plate: new THREE.MeshStandardMaterial({ color: 0xe8e2cf, roughness: 0.5 }),
     wood: new THREE.MeshStandardMaterial({ color: 0x8a5a32, roughness: 0.9 }),
     hay: new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: 1 }),
-    cowWhite: new THREE.MeshStandardMaterial({ color: 0xf1ebe0, roughness: 0.8 }),
     skin: new THREE.MeshStandardMaterial({ color: 0x6b4a3a, roughness: 0.8 }),
     pothole: new THREE.MeshStandardMaterial({
       color: 0x141218,
@@ -586,6 +586,126 @@ function start() {
     g.scale.setScalar(CAR);
     return g;
   }
+  /* an Indian zebu cow (metres, head toward -z): rounded body, shoulder hump, dewlap, long face, curved horns,
+     ears, tufted tail, jointed legs with hooves. userData.legs / head drive the walk in frame() */
+  const COW = {
+    hide: new THREE.MeshStandardMaterial({ color: '#ece3d3', roughness: 0.85 }),
+    shade: new THREE.MeshStandardMaterial({ color: '#cfc4b2', roughness: 0.9 }),
+    muzzle: new THREE.MeshStandardMaterial({ color: '#3b302c', roughness: 0.6 }),
+    hoof: new THREE.MeshStandardMaterial({ color: '#2a2420', roughness: 0.7 }),
+    horn: new THREE.MeshStandardMaterial({ color: '#d8c49a', roughness: 0.5 }),
+    eye: new THREE.MeshStandardMaterial({ color: '#141010', roughness: 0.2 }),
+  };
+  const blob = (r, sx, sy, sz, mat, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 12), mat);
+    m.scale.set(sx, sy, sz);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    return m;
+  };
+  const tube = (pts, r, mat) => {
+    const m = new THREE.Mesh(
+      new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))), 12, r, 8),
+      mat,
+    );
+    m.castShadow = true;
+    return m;
+  };
+  /* smooth capsule between two points (body parts that blend instead of looking like stacked balls) */
+  function limb(a, b, r, mat, sx = 1) {
+    const A = new THREE.Vector3(...a),
+      B = new THREE.Vector3(...b),
+      len = A.distanceTo(B),
+      m = new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.01, len), 6, 14), mat);
+    m.position.copy(A).add(B).multiplyScalar(0.5);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize());
+    m.scale.x = sx;
+    m.castShadow = true;
+    return m;
+  }
+  function makeCow(hornCol) {
+    const g = new THREE.Group(),
+      H = COW.hide,
+      S = COW.shade;
+    // one smooth barrel of a body, slightly deeper at the chest
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.0, 8, 20), H);
+    body.rotation.x = Math.PI / 2;
+    body.scale.set(0.95, 1, 1.08);
+    body.position.set(0, 1.08, 0.08);
+    body.castShadow = true;
+    g.add(body);
+    g.add(blob(0.36, 0.95, 1.05, 1.1, S, 0, 1.06, -0.38)); // greyer chest and front quarters
+    g.add(blob(0.22, 0.8, 0.85, 1.3, S, 0, 1.4, -0.32)); // the zebu hump, blended into the shoulders
+    // neck sloping down to the head, with a soft dewlap underneath
+    g.add(limb([0, 1.28, -0.55], [0, 1.2, -0.95], 0.2, S, 0.9));
+    g.add(blob(0.2, 0.32, 1.25, 1.2, S, 0, 0.92, -0.72));
+    // head: long face angled down, dark muzzle, eyes, drooping ears, curved horns
+    const head = new THREE.Group();
+    head.add(limb([0, 0.05, 0.05], [0, -0.06, -0.38], 0.14, H, 0.95));
+    head.add(blob(0.12, 1.05, 0.9, 1, COW.muzzle, 0, -0.08, -0.48));
+    for (const sx of [-1, 1]) {
+      head.add(blob(0.028, 1, 1, 1, COW.eye, sx * 0.125, 0.05, -0.12));
+      const ear = blob(0.12, 0.28, 0.55, 1.1, S, sx * 0.2, -0.02, 0.06);
+      ear.rotation.set(0.3, sx * 0.5, sx * 0.6);
+      head.add(ear);
+      head.add(
+        tube(
+          [
+            [sx * 0.08, 0.12, 0.08],
+            [sx * 0.2, 0.2, 0.1],
+            [sx * 0.23, 0.36, 0.04],
+            [sx * 0.16, 0.46, -0.04],
+          ],
+          0.026,
+          hornCol,
+        ),
+      );
+    }
+    head.position.set(0, 1.24, -1.08);
+    head.rotation.x = 0.25;
+    g.add(head);
+    // legs: sturdy upper leg, slimmer shin, hoof; pivot at the hip so they can swing
+    const legs = [];
+    for (const [lx, lz, front] of [
+      [-0.2, -0.42, 1],
+      [0.2, -0.42, 1],
+      [-0.2, 0.6, 0],
+      [0.2, 0.6, 0],
+    ]) {
+      const leg = new THREE.Group();
+      leg.add(limb([0, 0, 0], [0, -0.36, front ? 0 : 0.04], front ? 0.1 : 0.12, front ? S : H));
+      leg.add(limb([0, -0.36, front ? 0 : 0.04], [0, -0.74, 0], 0.055, front ? S : H));
+      const hoof = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.1, 10), COW.hoof);
+      hoof.position.y = -0.82;
+      leg.add(hoof);
+      leg.position.set(lx, 0.88, lz);
+      g.add(leg);
+      legs.push(leg);
+    }
+    // tail with a dark tuft
+    g.add(
+      tube(
+        [
+          [0, 1.3, 0.95],
+          [0, 1.1, 1.05],
+          [0.02, 0.75, 1.08],
+          [0, 0.45, 1.06],
+        ],
+        0.024,
+        H,
+      ),
+    );
+    g.add(blob(0.07, 0.8, 1.7, 0.8, COW.muzzle, 0, 0.38, 1.06));
+    g.userData = { legs, head };
+    return g;
+  }
+  /* walk: legs swing in diagonal pairs and the head nods */
+  function walk(m, t) {
+    const u = m.userData;
+    if (!u || !u.legs) return;
+    u.legs.forEach((l, i) => (l.rotation.x = Math.sin(t + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.35));
+    u.head.rotation.x = 0.25 + Math.sin(t * 2) * 0.06;
+  }
   function makeHazard(k, col) {
     const g = new THREE.Group();
     if (k === 'rick') {
@@ -608,38 +728,19 @@ function start() {
         const w = wheel(0.7, 0.1, sx * 0.95, 0.4);
         g.add(w);
         // a bullock pulling on each side of the shaft
-        const b = new THREE.Group();
-        b.add(box(0.6, 0.65, 1.5, M.cowWhite, 0, 1.0, 0));
-        b.add(box(0.36, 0.35, 0.5, M.cowWhite, 0, 1.25, -0.9));
-        b.add(box(0.3, 0.3, 0.3, M.cowWhite, 0, 1.45, 0.25));
-        for (const [lx, lz] of [
-          [-0.2, -0.5],
-          [0.2, -0.5],
-          [-0.2, 0.5],
-          [0.2, 0.5],
-        ])
-          b.add(box(0.12, 0.7, 0.12, M.cowWhite, lx, 0.35, lz));
-        for (const hx of [-0.14, 0.14]) b.add(box(0.05, 0.3, 0.05, M.plate, hx, 1.55, -0.95));
-        b.position.set(sx * 0.5, 0, -2.0);
+        const b = makeCow(COW.horn);
+        b.scale.setScalar(0.85);
+        (g.userData.cows = g.userData.cows || []).push(b);
+        b.position.set(sx * 0.5, 0, -2.3);
         g.add(b);
       }
       g.add(box(0.1, 0.1, 2.2, M.wood, 0, 0.9, -1.4));
       g.scale.setScalar(CAR * 0.9);
     } else if (k === 'cow') {
-      g.add(box(0.75, 0.75, 1.8, M.cowWhite, 0, 1.1, 0));
-      g.add(box(0.4, 0.35, 0.4, M.cowWhite, 0, 1.6, -0.4));
-      g.add(box(0.4, 0.42, 0.6, M.cowWhite, 0, 1.3, -1.15));
-      for (const hx of [-0.15, 0.15]) g.add(box(0.06, 0.3, 0.06, M.plate, hx, 1.62, -1.2));
-      for (const [lx, lz] of [
-        [-0.25, -0.65],
-        [0.25, -0.65],
-        [-0.25, 0.65],
-        [0.25, 0.65],
-      ])
-        g.add(box(0.15, 0.75, 0.15, M.cowWhite, lx, 0.37, lz));
-      g.add(box(0.06, 0.6, 0.06, M.cowWhite, 0, 0.95, 0.95));
-      g.add(box(0.1, 0.12, 0.1, flat(0xff9933), 0.3, 1.4, -0.9));
-      g.scale.setScalar(CAR * 0.9);
+      const c = makeCow(Math.random() < 0.4 ? flat('#ff9933') : COW.horn);
+      g.add(c);
+      g.userData = c.userData;
+      g.scale.setScalar(CAR * 0.95);
     } else {
       // cyclist
       g.add(wheel(0.34, 0.05, 0, -0.55), wheel(0.34, 0.05, 0, 0.55));
@@ -708,7 +809,7 @@ function start() {
     P = [];
     for (let i = 0; i < N; i++) {
       P.push({ x, z, y: segs[i].p1.y * YS });
-      h += (segs[i].c - mean) * 0.0062 + (Math.PI * 2) / N;
+      h += (segs[i].c - mean) * 0.0036 + (Math.PI * 2) / N;
       x += Math.cos(h) * SL * FS;
       z += Math.sin(h) * SL * FS;
     }
@@ -738,7 +839,10 @@ function start() {
 
     /* ribbons: strips along the whole track between two lateral offsets (in road half-widths) */
     const W = G.RW * LS;
-    function ribbon(o1, o2, colorOf, yOff = 0, keep = () => true) {
+    const groundY = minY - 0.6,
+      BANK = 3.6; // banks reach the ground this many road half-widths from the centre
+    /* drop = -1 or 1: that edge of the strip slopes down to the ground (embankments) */
+    function ribbon(o1, o2, colorOf, yOff = 0, keep = () => true, drop = 0) {
       const pos = [],
         col = [],
         c = new THREE.Color();
@@ -747,7 +851,11 @@ function start() {
         if (!keep(s)) continue;
         const a = P[i],
           b = P[(i + 1) % N];
-        const pt = (p, o) => [p.x - p.fz * o * W, p.y + yOff, p.z + p.fx * o * W];
+        const pt = (p, o) => [
+          p.x - p.fz * o * W,
+          (drop && Math.sign(o) === drop && Math.abs(o) >= BANK ? groundY : p.y) + yOff,
+          p.z + p.fx * o * W,
+        ];
         const a1 = pt(a, o1),
           a2 = pt(a, o2),
           b1 = pt(b, o1),
@@ -800,11 +908,25 @@ function start() {
         vmat(0.6),
       );
     add(
-      ribbon(-14, -1.17, s => TH.grass[s.k], -0.06),
+      ribbon(
+        -BANK,
+        -1.17,
+        s => TH.grass[s.k],
+        -0.06,
+        () => true,
+        -1,
+      ),
       vmat(1),
     );
     add(
-      ribbon(1.17, 14, s => TH.grass[s.k], -0.06),
+      ribbon(
+        1.17,
+        BANK,
+        s => TH.grass[s.k],
+        -0.06,
+        () => true,
+        1,
+      ),
       vmat(1),
     );
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000), flat(TH.grass[1]));
@@ -941,7 +1063,13 @@ function start() {
           o.t === 'P' ? s.i * 1.7 : -Math.atan2(p.fz, p.fx) + (o.o < 0 ? Math.PI : 0) + Math.PI / 2,
         );
         m4.compose(
-          new THREE.Vector3(p.x - p.fz * lat, p.y - 0.05, p.z + p.fx * lat),
+          new THREE.Vector3(
+            p.x - p.fz * lat,
+            p.y -
+              (p.y - groundY) * Math.min(1, Math.max(0, (Math.abs(lat) / W - 1.17) / (BANK - 1.17))) -
+              0.05,
+            p.z + p.fx * lat,
+          ),
           q,
           new THREE.Vector3(sc, sc, sc),
         );
@@ -1070,7 +1198,7 @@ function start() {
     skyMat.uniforms.sunCol.value.set(TH.sun[1]);
     sun.material.color.set(TH.sun[0]).multiplyScalar(night ? 1.2 : 3);
     sun.scale.setScalar(TH.sr * (night ? 0.7 : 1));
-    scene.fog = new THREE.Fog(TH.fog, 70, night ? 520 : 650);
+    scene.fog = new THREE.Fog(TH.fog, 140, night ? 700 : 1100);
     scene.background = new THREE.Color(TH.fog);
     sunLight.color.set(night ? 0x8fa0ff : TH.sun[1]);
     sunLight.intensity = night ? 0.5 : 1.9;
@@ -1078,8 +1206,8 @@ function start() {
     hemi.groundColor.set(TH.grass[0]);
     hemi.intensity = night ? 0.55 : 0.95;
     stars.visible = night;
-    bloom.strength = night ? 0.75 : 0.4;
-    renderer.toneMappingExposure = night ? 1.25 : 1.05;
+    bloom.strength = night ? 0.5 : 0.22;
+    renderer.toneMappingExposure = night ? 1.2 : 1.0;
     builtVer = G.trackVer;
   }
   const sunDir = new THREE.Vector3();
@@ -1171,6 +1299,9 @@ function start() {
       m.visible = dz > -40 / FS && dz < 700 / FS;
       if (!m.visible) continue;
       place(m, c.z, c.o, c.hz === 'cow' ? Math.cos(c.ph) * 1.3 : 0);
+      if (c.hz === 'cow') walk(m, G.t * 3 + c.ph * 5);
+      else if (c.hz === 'cart' && m.userData.cows)
+        m.userData.cows.forEach((b, i) => walk(b, G.t * 4 + i * 0.5));
       if (!c.hz || c.hz === 'cyc' || c.hz === 'rick') spin(m, (c.sp / 12000) * dt * 60);
     }
     for (const [c, m] of meshes)
@@ -1181,10 +1312,12 @@ function start() {
       }
 
     // chase camera: behind and above the car, looking down the road
-    const cam = at(pos - 420, px * 0.92);
-    const camY = cam.y + 4.2 + sf * 0.5;
+    // camera height: never below the car's own road height, so it can't dip into a crest
+    const carY = at(pos + G.PZ, 0).y;
+    const cam = at(pos + G.PZ - 12.5 / FS, px * 0.92);
+    const camY = Math.max(cam.y, carY) + 4.2 + sf * 0.5;
     camera.position.set(cam.x, camY, cam.z);
-    const ahead = at(pos + G.PZ + 3000, px * 0.6);
+    const ahead = at(pos + G.PZ + 20 / FS, px * 0.6);
     look.set(ahead.x, ahead.y + 0.8, ahead.z);
     camera.lookAt(look);
     const sh = G.reduce ? 0 : G.shake * 0.012;
@@ -1192,7 +1325,14 @@ function start() {
     // optional orbit camera around the player's car (view3d.orbit = { a: angle, d: distance, h: height })
     const ob = window.view3d.orbit;
     if (ob) {
-      const c = player.position;
+      // ob.hz: centre on the nearest visible hazard of that kind (e.g. 'cow') instead of the player
+      let c = player.position;
+      if (ob.hz)
+        for (const [k, m] of meshes)
+          if (k.hz === ob.hz && m.visible && m.position.distanceTo(player.position) < 120) {
+            c = m.position;
+            break;
+          }
       camera.position.set(c.x + Math.sin(ob.a) * ob.d, c.y + ob.h, c.z + Math.cos(ob.a) * ob.d);
       camera.lookAt(c.x, c.y + 0.9, c.z);
     }
@@ -1320,6 +1460,6 @@ function start() {
     scomp.render();
   }
 
-  window.view3d = { ready: true, frame, showroom: null };
+  window.view3d = { ready: true, frame, showroom: null, track: () => P };
   document.body.classList.add('gl');
 }

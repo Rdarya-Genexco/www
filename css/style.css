@@ -801,6 +801,9 @@ h2 {
   height: 72px;
   font-size: 22px;
 }
+#tc .rb .br {
+  border-color: rgba(255, 90, 90, 0.7);
+}
 #tc button {
   width: 88px;
   height: 88px;

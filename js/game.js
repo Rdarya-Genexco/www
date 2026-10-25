@@ -1148,7 +1148,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   /* D switches drift on and stays on until D is pressed again */
   function setDriftLock(on) {
     dLock = on;
-    document.querySelector('#tc .dr').classList.toggle('on', on);
+    document.querySelector('#tc [data-k=D]').classList.toggle('on', on);
     if (state === 'race' || state === 'count') toast(on ? 'Drift on' : 'Drift off', 0, 'cp');
   }
   const vib = ms => {
@@ -1499,7 +1499,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     holes = 0;
     wreck = false;
     dLock = false;
-    document.querySelector('#tc .dr').classList.remove('on');
+    document.querySelector('#tc [data-k=D]').classList.remove('on');
     da = 0;
     dfx = 0;
     boost = 0;
@@ -1996,7 +1996,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         row(key('M'), 'Mute') +
         row(key('Esc'), 'Quit race') +
         '</ul></section>' +
-        '<section class="card"><b>Touch</b><small>Drag the joystick or hold the arrows to steer. Gas is automatic. Hold Nitro to boost and Drift in bends. Switch control style in Settings.</small></section>' +
+        '<section class="card"><b>Touch</b><small>Drag the joystick or hold the arrows to steer. Gas is automatic; hold Brake to slow down. Hold Nitro to boost and Drift in bends. Switch control style in Settings.</small></section>' +
         '<section class="card"><b>Drift &amp; nitro</b><small>Drift through bends to hold your line and refill nitro. Passing close to another car refills it too.</small></section>' +
         '<section class="card"><b>Damage</b><small>Crashes and side swipes damage your car and cut its top speed. If it reaches 0% you are wrecked and lose the race.</small></section>' +
         '<section class="card"><b>Mumbai Mayhem</b><small>Dodge rickshaws, cyclists, bullock carts, wandering cows and potholes. Your car is invincible here, but every hit slows you down.</small></section>' +
