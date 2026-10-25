@@ -307,31 +307,16 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     { id: 'grip', name: 'Grip', desc: 'Less grass drag', max: 3, cost: [20, 60, 140] },
   ];
   /* each car shape drives differently: ts = top speed, ac = acceleration, hd = handling, tf = damage taken */
-  const CARS = {
-    coupe: { ts: 1, ac: 1, hd: 1, tf: 1, d: 'Balanced all-rounder' },
-    hatch: {
-      ts: 0.96,
-      ac: 1.1,
-      hd: 1.12,
-      tf: 1,
-      d: 'Quick off the line and agile, a little slower flat out',
-    },
-    wedge: { ts: 1.06, ac: 0.95, hd: 0.9, tf: 1, d: 'Highest top speed, but heavy in the bends' },
-    van: { ts: 0.93, ac: 0.9, hd: 0.95, tf: 0.5, d: 'Slow and steady, takes half damage' },
-    roadster: { ts: 1, ac: 1.05, hd: 1.2, tf: 1.35, d: 'Sharpest handling, but fragile' },
-    pickup: { ts: 0.97, ac: 0.92, hd: 1, tf: 0.65, d: 'Tough and steady, takes less damage' },
-    /* supercars, bought in the Garage showroom */
-    toro: { ts: 1.12, ac: 1.18, hd: 1.04, tf: 1.05, d: 'Angular V12 bull with brutal acceleration' },
-    rosso: { ts: 1.16, ac: 1.2, hd: 1.18, tf: 1, d: 'Italian thoroughbred, fast and razor sharp in bends' },
-    veyra: { ts: 1.24, ac: 1.26, hd: 1.1, tf: 0.85, d: 'Quad-turbo W16 hypercar with an enormous top speed' },
-    phantom: {
-      ts: 1.3,
-      ac: 1.34,
-      hd: 1.24,
-      tf: 0.85,
-      d: 'Track-bred hypercar, the fastest thing on four wheels',
-    },
-  };
+  /* car stats come from js/cars.js: ts = top speed, ac = acceleration, hd = handling, tf = damage taken */
+  const CARS = {};
+  for (const c of window.CAR_LIST)
+    CARS[c.id] = {
+      ts: c.stats.speed,
+      ac: c.stats.accel,
+      hd: c.stats.handling,
+      tf: c.stats.damage,
+      d: c.desc,
+    };
   const UP = { ts: 1, ac: 1, hd: 1, gr: 0, tf: 1 };
   function applyUp() {
     const u = (me && me.upg) || {},
@@ -1112,21 +1097,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     placeNow = 0,
     loginOpen = false,
     selBody = 'coupe';
-  const BODIES = [
-    ['coupe', 'Coupe'],
-    ['hatch', 'Hatch'],
-    ['wedge', 'Wedge'],
-    ['van', 'Van'],
-    ['roadster', 'Roadster'],
-    ['pickup', 'Pickup'],
-  ];
-  /* supercars: [id, name, price in points] */
-  const SUPER = [
-    ['toro', 'Toro V12', 150],
-    ['rosso', 'Rosso GT', 300],
-    ['veyra', 'Veyra 16', 600],
-    ['phantom', 'Phantom X', 1000],
-  ];
+  /* starter cars [id, name] and supercars [id, name, price], all from js/cars.js */
+  const BODIES = window.CAR_LIST.filter(c => !c.price).map(c => [c.id, c.show]);
+  const SUPER = window.CAR_LIST.filter(c => c.price).map(c => [c.id, c.show, c.price]);
+  const LOOK2D = Object.fromEntries(window.CAR_LIST.map(c => [c.id, c.look2d]));
   const isSuper = b => SUPER.some(s => s[0] === b);
   const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
   const inp = { L: 0, R: 0, G: 0, B: 0, N: 0, X: 0, D: 0 };
@@ -2282,7 +2256,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
               '<div class="st"><span>' +
               l +
               '</span><i><u style="width:' +
-              Math.round(v * 100) +
+              Math.round(Math.min(1, v) * 100) +
               '%"></u></i></div>';
           return (
             '<div class="sc' +
@@ -3298,7 +3272,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ctx.ellipse(0, 0, w * 0.55, h * 0.14, 0, 0, 7);
     ctx.fill();
     if (isSuper(body)) {
-      supercar(w, h, col, glow, body, big, flame);
+      supercar(w, h, col, glow, LOOK2D[body], big, flame);
       ctx.restore();
       return;
     }

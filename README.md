@@ -8,6 +8,7 @@ An arcade street racer in the browser: India, Brazil, Mexico and Japan, rival bo
 index.html          page markup (HUD, touch controls, menu overlay)
 favicon.svg         tab icon
 css/style.css       all styles
+js/cars.js          every car: names, real-world names, prices, stats, 3D shape (edit this one)
 js/game.js          the game: tracks, physics, rivals, menus, saves, and the 2D fallback renderer
 js/view3d.js        3D renderer (Three.js): builds the world from game.js's track each map and
                     draws cars, scenery, lighting, shadows and bloom every frame
@@ -54,3 +55,31 @@ Add your site's domain under Firebase Authentication → Settings → Authorized
 Points buy upgrades and supercars (Toro V12, Rosso GT, Veyra 16, Phantom X) in the Garage. With WebGL the Garage becomes a 3D studio: the car spins on a turntable (drag to rotate) and tapping a showroom card previews that car.
 
 Arrow keys steer, Up/W gas, Down/S brake, Space nitro, D drift on/off, Z/C hold to drift, M mute, Esc quit. On touch screens: joystick or arrow buttons, Nitro and Drift buttons, automatic gas.
+
+## Cars
+
+All cars live in `js/cars.js`. The top of that file has the settings you're most likely to change:
+
+- `USE_REAL_NAMES`: `false` shows the game names, `true` shows the real car names. Off by default, because real brand names are trademarks.
+- `PRICES`: the points each supercar costs.
+- `CAR_LIST`: each car's `name`, `realName`, `stats`, `desc`, 3D `shape` and `style`.
+
+Don't change a car's `id` once players own it, because saves refer to cars by id.
+
+| In-game name | Styled after | Price | Speed | Accel | Handling | Damage taken |
+|---|---|---|---|---|---|---|
+| Coupe | Generic sports coupe | free | 1.00 | 1.00 | 1.00 | 1.00 |
+| Hatch | Generic hot hatch | free | 0.96 | 1.10 | 1.12 | 1.00 |
+| Wedge | Generic 80s wedge sports car | free | 1.06 | 0.95 | 0.90 | 1.00 |
+| Van | Generic minivan | free | 0.93 | 0.90 | 0.95 | 0.50 |
+| Roadster | Generic open-top roadster | free | 1.00 | 1.05 | 1.20 | 1.35 |
+| Pickup | Generic pickup truck | free | 0.97 | 0.92 | 1.00 | 0.65 |
+| Toro V12 | Lamborghini Centenario | 150 | 1.12 | 1.18 | 1.04 | 1.05 |
+| Rosso GT | Ferrari 812 Superfast | 300 | 1.16 | 1.20 | 1.18 | 1.00 |
+| Veyra 16 | Bugatti Chiron | 600 | 1.24 | 1.26 | 1.10 | 0.85 |
+| Veyra Dive | Bugatti Divo | 900 | 1.22 | 1.25 | 1.22 | 0.90 |
+| Phantom X | Hypercar concept (not a real model) | 1000 | 1.30 | 1.34 | 1.24 | 0.85 |
+| Veyra 300+ | Bugatti Chiron Super Sport 300+ | 1200 | 1.32 | 1.30 | 1.08 | 0.85 |
+| Veyra Bolt | Bugatti Bolide | 1500 | 1.34 | 1.40 | 1.30 | 0.70 |
+
+Stats are relative to the starter Coupe (1.00); Garage upgrades multiply on top.

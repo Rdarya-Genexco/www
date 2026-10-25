@@ -231,150 +231,8 @@ function start() {
      tail) extruded across the car with rounded edges, then narrowed above the waist like a real cabin.
      L length, W width, r ride height; heights above r: hood, roof, deck; u positions along the car (front
      is -L/2): ws windscreen base, rf/rr roof front/rear, rw rear window base. */
-  const SPEC = {
-    coupe: {
-      L: 4.4,
-      W: 1.86,
-      r: 0.22,
-      hood: 0.72,
-      roof: 1.3,
-      deck: 0.8,
-      ws: -0.75,
-      rf: -0.1,
-      rr: 0.6,
-      rw: 1.35,
-    },
-    hatch: {
-      L: 3.95,
-      W: 1.78,
-      r: 0.24,
-      hood: 0.74,
-      roof: 1.42,
-      deck: 0.95,
-      ws: -0.75,
-      rf: -0.15,
-      rr: 1.15,
-      rw: 1.75,
-    },
-    wedge: {
-      L: 4.5,
-      W: 1.94,
-      r: 0.2,
-      hood: 0.6,
-      roof: 1.12,
-      deck: 0.78,
-      ws: -0.55,
-      rf: 0.15,
-      rr: 0.7,
-      rw: 1.6,
-      wing: 1,
-    },
-    van: {
-      L: 4.7,
-      W: 1.92,
-      r: 0.28,
-      hood: 0.9,
-      roof: 1.95,
-      deck: 1.4,
-      ws: -1.65,
-      rf: -1.05,
-      rr: 2.15,
-      rw: 2.3,
-    },
-    roadster: {
-      L: 4.1,
-      W: 1.8,
-      r: 0.2,
-      hood: 0.66,
-      roof: 0.98,
-      deck: 0.74,
-      ws: -0.45,
-      rf: -0.15,
-      rr: 0.05,
-      rw: 0.35,
-      open: 1,
-    },
-    pickup: {
-      L: 5.0,
-      W: 1.96,
-      r: 0.34,
-      hood: 0.86,
-      roof: 1.62,
-      deck: 0.92,
-      ws: -0.95,
-      rf: -0.45,
-      rr: 0.35,
-      rw: 0.45,
-      bed: 1,
-    },
-    toro: {
-      L: 4.7,
-      W: 2.06,
-      r: 0.14,
-      hood: 0.38,
-      roof: 0.98,
-      deck: 0.6,
-      ws: -0.85,
-      rf: -0.15,
-      rr: 0.3,
-      rw: 0.95,
-      sup: 1,
-      wing: 2,
-      flare: 0.08,
-      acc: '#f2c418',
-      cal: '#f2c418',
-    },
-    rosso: {
-      L: 4.65,
-      W: 2.02,
-      r: 0.16,
-      hood: 0.46,
-      roof: 1.06,
-      deck: 0.66,
-      ws: -0.45,
-      rf: 0.15,
-      rr: 0.65,
-      rw: 1.25,
-      sup: 1,
-      flare: 0.07,
-      cal: '#f2c418',
-    },
-    veyra: {
-      L: 4.55,
-      W: 2.06,
-      r: 0.17,
-      hood: 0.52,
-      roof: 1.08,
-      deck: 0.72,
-      ws: -0.55,
-      rf: 0.0,
-      rr: 0.55,
-      rw: 1.1,
-      sup: 1,
-      wing: 2,
-      flare: 0.05,
-      acc: '#5fd0ff',
-      two: 1,
-    },
-    phantom: {
-      L: 4.95,
-      W: 2.08,
-      r: 0.13,
-      hood: 0.36,
-      roof: 0.96,
-      deck: 0.58,
-      ws: -0.95,
-      rf: -0.3,
-      rr: 0.2,
-      rw: 1.0,
-      sup: 1,
-      wing: 3,
-      flare: 0.09,
-      tumble: 0.4,
-      acc: '#4db8ff',
-      fin: 1,
-    },
-  };
+  /* body outlines and details come from js/cars.js (shape + style per car) */
+  const SPEC = Object.fromEntries(window.CAR_LIST.map(c => [c.id, { ...c.shape, ...c.style }]));
   /* extrude a side profile (u along the car, v up) across width w, centred, rounded, with the cabin narrowed */
   function sculpt(pts, w, bevel, waist, roofV, opt = {}) {
     const tumble = opt.tumble ?? 0.2,
@@ -510,7 +368,7 @@ function start() {
         g.add(taper(0.04, 0.02, 0.26, 2.2, 1.6, M.black, 0, r + s.deck + 0.1, 1.0, 0.25));
         for (const sx of [-1, 1]) g.add(box(0.02, 0.025, L * 0.5, acc, sx * (W / 2 + 0.05), r + 0.12, -0.2));
       }
-      if (body === 'toro') {
+      if (s.rearFins) {
         // open rear grille with yellow fins
         g.add(box(W * 0.78, s.deck * 0.36, 0.04, M.black, 0, r + s.deck * 0.3, b + B));
         for (let i = -3; i <= 3; i++)
@@ -542,25 +400,72 @@ function start() {
     // lights, plate, exhausts
     const rz = b + B + 0.01,
       ly = r + s.deck * 0.68;
-    if (body === 'veyra') g.add(box(W * 0.8, 0.045, 0.03, M.tail, 0, ly + 0.06, rz));
-    else if (body === 'rosso')
+    if (s.lights === 'bar') g.add(box(W * 0.8, 0.045, 0.03, M.tail, 0, ly + 0.06, rz));
+    else if (s.lights === 'quad')
       for (const x of [-0.72, -0.48, 0.48, 0.72]) {
         const l = cyl(0.085, 0.085, 0.04, M.tail, 16);
         l.rotation.x = Math.PI / 2;
         l.position.set(x, ly, rz);
         g.add(l);
       }
-    else if (body === 'phantom') g.add(box(W * 0.9, 0.035, 0.03, M.tail, 0, ly + 0.08, rz));
-    else if (body === 'toro')
+    else if (s.lights === 'thin') g.add(box(W * 0.9, 0.035, 0.03, M.tail, 0, ly + 0.08, rz));
+    else if (s.lights === 'x')
+      // X-shaped lights, front and back
+      for (const sx of [-1, 1])
+        for (const [z, mat] of [
+          [rz, M.tail],
+          [f - B - 0.01, M.head],
+        ])
+          for (const a of [0.6, -0.6]) {
+            const xb = box(0.36, 0.035, 0.03, mat, sx * 0.62, z === rz ? ly : r + s.hood * 0.55, z);
+            xb.rotation.z = a;
+            g.add(xb);
+          }
+    else if (s.lights === 'y')
       for (const sx of [-1, 1]) {
         g.add(box(0.5, 0.04, 0.03, M.tail, sx * 0.6, ly, rz));
         g.add(box(0.04, 0.18, 0.03, M.tail, sx * 0.6, ly - 0.09, rz));
       }
     else for (const sx of [-1, 1]) g.add(rbox(0.4, 0.13, 0.04, M.tail, sx * (W / 2 - 0.32), ly, rz, 0.03));
-    for (const sx of [-1, 1])
-      g.add(rbox(0.36, 0.1, 0.04, M.head, sx * (W / 2 - 0.32), r + s.hood * 0.6, f - B - 0.01, 0.03));
+    if (s.lights !== 'x')
+      for (const sx of [-1, 1])
+        if (s.horseshoe)
+          // slim quad-LED headlights either side of the grille
+          for (let i = 0; i < 4; i++)
+            g.add(
+              box(0.08, 0.05, 0.03, M.head, sx * (W / 2 - 0.5 + i * 0.1), r + s.hood * 0.62, f - B - 0.01),
+            );
+        else g.add(rbox(0.36, 0.1, 0.04, M.head, sx * (W / 2 - 0.32), r + s.hood * 0.6, f - B - 0.01, 0.03));
+    if (s.horseshoe) {
+      // horseshoe grille: a chrome arch around a dark mesh, open at the bottom
+      const gy = r + s.hood * 0.38,
+        gz = f - B - 0.015;
+      g.add(blob(0.24, 1, 1.15, 0.12, M.black, 0, gy, gz + 0.01));
+      const hs = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 8, 28, Math.PI * 1.4), M.chrome);
+      hs.rotation.z = -Math.PI * 0.2;
+      hs.scale.y = 1.15;
+      hs.position.set(0, gy, gz);
+      g.add(hs);
+    }
+    if (s.stripes) {
+      // racing stripes over the nose and hood, following its curve
+      const sm = paint(s.stripes),
+        sp = [
+          [f + 0.15, r + 0.2],
+          [f + 0.2, r + s.hood * 0.62 + B + 0.01],
+          [f + 0.6, r + s.hood + B + 0.012],
+          [s.ws, r + s.hood + 0.05 + B + 0.012],
+          [s.ws, r + 0.2],
+        ];
+      for (const sx of [-1, 1]) {
+        const st = mesh(sculpt(sp, 0.16, 0.02, waist, r + s.roof), sm);
+        st.position.x = sx * 0.34;
+        g.add(st);
+      }
+    }
+    if (s.spine) g.add(taper(0.06, 0.03, 0.18, 1.4, 1.0, M.black, 0, r + s.roof + 0.1, s.rf + 0.7, 0.2));
     g.add(box(0.5, 0.13, 0.02, M.plate, 0, r + s.deck * 0.38, rz + 0.01));
-    const ex = s.sup ? (body === 'rosso' ? [-0.42, -0.3, 0.3, 0.42] : [0]) : [0.55];
+    const ex = s.sup ? (s.exhaust === 'quad' ? [-0.42, -0.3, 0.3, 0.42] : [0]) : [0.55];
     for (const x of ex) {
       const big = s.sup && ex.length === 1,
         e = cyl(big ? 0.12 : 0.05, big ? 0.12 : 0.05, 0.2, M.chrome, 16);
