@@ -44,4 +44,6 @@ Add your site's domain under Firebase Authentication → Settings → Authorized
 
 ## Controls
 
+Points buy upgrades and supercars (Toro V12, Rosso GT, Veyra 16, Phantom X) in the Garage showroom.
+
 Arrow keys steer, Up/W gas, Down/S brake, Space nitro, D drift on/off, Z/C hold to drift, M mute, Esc quit. On touch screens: joystick or arrow buttons, Nitro and Drift buttons, automatic gas.

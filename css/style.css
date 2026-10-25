@@ -967,3 +967,71 @@ kbd {
   font-weight: 800;
   text-align: center;
 }
+/* Garage showroom */
+.show {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+  width: min(1000px, 100%);
+}
+.sc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(60, 46, 110, 0.75), rgba(19, 17, 58, 0.85));
+  border: 1px solid rgba(255, 244, 224, 0.2);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.sc.on {
+  border-color: var(--hot);
+  box-shadow:
+    0 0 0 2px var(--hot),
+    0 10px 30px rgba(255, 122, 61, 0.3);
+}
+.sc canvas {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
+.sc b {
+  font-size: clamp(24px, 3vw, 30px);
+  font-weight: 900;
+  line-height: 1;
+}
+.sc small {
+  font-size: 15px;
+  opacity: 0.85;
+  font-weight: 600;
+  line-height: 1.15;
+  min-height: 2.3em;
+}
+.sc .st {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.sc .st i {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 244, 224, 0.15);
+  overflow: hidden;
+}
+.sc .st u {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--hot), var(--glow));
+  text-decoration: none;
+}
+.sc .btn {
+  font-size: 22px;
+  padding: 6px 12px 4px;
+  margin-top: 4px;
+}

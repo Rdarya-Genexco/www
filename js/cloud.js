@@ -9,7 +9,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
-  getFirestore,
+  initializeFirestore,
   doc,
   getDoc,
   setDoc,
@@ -26,7 +26,8 @@ const app = initializeApp({
   measurementId: 'G-WRWJPDEPME',
 });
 const auth = getAuth(app),
-  db = getFirestore(app);
+  /* skip undefined fields instead of rejecting the whole save */
+  db = initializeFirestore(app, { ignoreUndefinedProperties: true });
 window.cloud = {
   user: () => auth.currentUser,
   signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),
@@ -42,7 +43,9 @@ window.cloud = {
   save: async data => {
     const u = auth.currentUser;
     if (!u) return;
-    await setDoc(doc(db, 'players', u.uid), { ...data, email: u.email, updated: serverTimestamp() });
+    /* plain JSON copy: drops undefined values and anything Firestore can't store */
+    const clean = JSON.parse(JSON.stringify(data));
+    await setDoc(doc(db, 'players', u.uid), { ...clean, email: u.email, updated: serverTimestamp() });
   },
 };
 onAuthStateChanged(auth, u => dispatchEvent(new CustomEvent('cloudauth', { detail: u })));

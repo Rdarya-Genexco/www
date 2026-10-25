@@ -3,10 +3,11 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
 (() => {
   const $ = id => document.getElementById(id);
   const cv = $('c'),
-    ctx = cv.getContext('2d'),
     ov = $('ov'),
     mmc = $('mm'),
     mx = mmc.getContext('2d');
+  /* the drawing context; the showroom points it at small preview canvases for a moment */
+  let ctx = cv.getContext('2d');
   let reduce = matchMedia('(prefers-reduced-motion: reduce)').matches,
     auto = false,
     coarse = matchMedia('(pointer:coarse)').matches;
@@ -107,22 +108,53 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     cloudPush();
   };
   /* ---------- online account: same drivers on any browser or device ---------- */
+  /* cReady: the online copy has been loaded and merged. Until then nothing is pushed, so a slow or failed
+     load can never overwrite the online save with this browser's data */
   let cUser = null,
+    cReady = false,
     cTimer = 0,
     cMsg = '';
   function cloudPush() {
-    if (!cUser || !window.cloud) return;
+    if (!cUser || !cReady || !window.cloud) return;
     clearTimeout(cTimer);
     cTimer = setTimeout(() => {
       window.cloud
-        .save({
-          profiles,
-          curKey,
-          league,
-          settings: { diff: diffSel, music: musicOn, riv: rivSel, laps: lapsSel, map: mapSel },
+        .save(cloudData())
+        .then(() => {
+          if (cMsg.startsWith('Online save failed')) cMsg = '';
         })
-        .catch(e => console.warn('cloud save failed', e));
+        .catch(e => {
+          cMsg =
+            'Online save failed (' + (e.code || e.message) + '). Progress is still saved in this browser.';
+          console.warn('cloud save failed', e);
+        });
     }, 1200);
+  }
+  function cloudData() {
+    return {
+      profiles,
+      curKey,
+      league,
+      settings: { diff: diffSel, music: musicOn, riv: rivSel, laps: lapsSel, map: mapSel },
+    };
+  }
+  /* sign out: send any unsaved progress first, then clear this account's drivers from the browser so the
+     next person to sign in here doesn't inherit (and upload) them */
+  async function cloudSignOut() {
+    if (!window.cloud) return;
+    clearTimeout(cTimer);
+    if (cUser && cReady)
+      await window.cloud.save(cloudData()).catch(e => console.warn('cloud save failed', e));
+    cReady = false;
+    await window.cloud.signOut().catch(() => {});
+    cUser = null;
+    for (const k in profiles) delete profiles[k];
+    league = { bots: {} };
+    ensureBots();
+    curKey = null;
+    me = null;
+    save();
+    showMenu();
   }
   /* keep whichever copy of each driver has done more (more races, then more points) */
   const better = (a, b) =>
@@ -158,6 +190,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         roll(me);
         applyUp();
       }
+      cReady = true;
+      cMsg = '';
       save();
       if (typeof state !== 'undefined' && state === 'menu') showMenu();
     } catch (e) {
@@ -168,8 +202,11 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   addEventListener('cloudauth', e => {
     const was = cUser;
     cUser = e.detail;
-    if (cUser && (!was || was.uid !== cUser.uid)) cloudPull();
-    else if (
+    if (!cUser) cReady = false;
+    if (cUser && (!was || was.uid !== cUser.uid)) {
+      cReady = false;
+      cloudPull();
+    } else if (
       typeof state !== 'undefined' &&
       state === 'menu' &&
       !ov.hidden &&
@@ -222,7 +259,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       return ovSet(
         '<h1 class="sm">Online save</h1><p>Signed in as <b>' +
           esc(cUser.email) +
-          '</b>.</p><span class="hint">Your drivers, points, upgrades, league and settings are saved online. Sign in with this email on any browser or device to carry on.</span>' +
+          '</b>.</p><span class="hint">Your drivers, points, upgrades, cars, league and settings are saved online. Signing out removes them from this browser until you sign in again. Sign in with this email on any browser or device to carry on.</span>' +
           (cMsg ? '<span class="hint err">' + esc(cMsg) + '</span>' : '') +
           '<div class="row"><button class="btn alt" data-a="cout">Sign out</button><button class="btn alt" data-a="menu">Back</button></div>',
       );
@@ -283,6 +320,17 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     van: { ts: 0.93, ac: 0.9, hd: 0.95, tf: 0.5, d: 'Slow and steady, takes half damage' },
     roadster: { ts: 1, ac: 1.05, hd: 1.2, tf: 1.35, d: 'Sharpest handling, but fragile' },
     pickup: { ts: 0.97, ac: 0.92, hd: 1, tf: 0.65, d: 'Tough and steady, takes less damage' },
+    /* supercars, bought in the Garage showroom */
+    toro: { ts: 1.12, ac: 1.18, hd: 1.04, tf: 1.05, d: 'Angular V12 bull with brutal acceleration' },
+    rosso: { ts: 1.16, ac: 1.2, hd: 1.18, tf: 1, d: 'Italian thoroughbred, fast and razor sharp in bends' },
+    veyra: { ts: 1.24, ac: 1.26, hd: 1.1, tf: 0.85, d: 'Quad-turbo W16 hypercar with an enormous top speed' },
+    phantom: {
+      ts: 1.3,
+      ac: 1.34,
+      hd: 1.24,
+      tf: 0.85,
+      d: 'Track-bred hypercar, the fastest thing on four wheels',
+    },
   };
   const UP = { ts: 1, ac: 1, hd: 1, gr: 0, tf: 1 };
   function applyUp() {
@@ -1070,6 +1118,15 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ['roadster', 'Roadster'],
     ['pickup', 'Pickup'],
   ];
+  /* supercars: [id, name, price in points] */
+  const SUPER = [
+    ['toro', 'Toro V12', 150],
+    ['rosso', 'Rosso GT', 300],
+    ['veyra', 'Veyra 16', 600],
+    ['phantom', 'Phantom X', 1000],
+  ];
+  const isSuper = b => SUPER.some(s => s[0] === b);
+  const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
   const inp = { L: 0, R: 0, G: 0, B: 0, N: 0, X: 0, D: 0 };
   let dLock = false,
     wreck = false,
@@ -1941,7 +1998,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<section class="card"><b>Drift &amp; nitro</b><small>Drift through bends to hold your line and refill nitro. Passing close to another car refills it too.</small></section>' +
         '<section class="card"><b>Damage</b><small>Crashes and side swipes damage your car and cut its top speed. If it reaches 0% you are wrecked and lose the race.</small></section>' +
         '<section class="card"><b>Mumbai Mayhem</b><small>Dodge rickshaws, cyclists, bullock carts, wandering cows and potholes. Your car is invincible here, but every hit slows you down.</small></section>' +
-        '<section class="card"><b>Points</b><small>1st 25 · 2nd 15 · 3rd 10 · 4th 5. Tours award trophies, and the Daily Challenge gives 20 points once a day.</small></section>' +
+        '<section class="card"><b>Points</b><small>1st 25 · 2nd 15 · 3rd 10 · 4th 5. Spend them on upgrades and supercars in the Garage showroom. The Daily Challenge gives 20 points once a day.</small></section>' +
         '<section class="card"><b>Online save</b><small>Sign in with email to keep your drivers, points, league and settings on any device.</small></section>' +
         '</div>' +
         '<div class="row"><button class="btn" data-a="menu">Let\'s race</button><button class="btn alt" data-a="settings">Settings</button></div>',
@@ -2185,16 +2242,18 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         me.points +
         ' pts to spend</p>' +
         '<div class="sec">Your car</div><div class="chips" role="radiogroup" aria-label="Car shape">' +
-        BODIES.map(
-          b =>
-            '<button class="chip' +
-            (b[0] === me.body ? ' on' : '') +
-            '" data-a="gbody" data-v="' +
-            b[0] +
-            '">' +
-            b[1] +
-            '</button>',
-        ).join('') +
+        BODIES.concat(SUPER.filter(s => owns(me, s[0])))
+          .map(
+            b =>
+              '<button class="chip' +
+              (b[0] === me.body ? ' on' : '') +
+              '" data-a="gbody" data-v="' +
+              b[0] +
+              '">' +
+              b[1] +
+              '</button>',
+          )
+          .join('') +
         '</div>' +
         '<div class="sws" role="radiogroup" aria-label="Car colour">' +
         COLS.map(
@@ -2212,7 +2271,45 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '</div>' +
         '<span class="hint">' +
         C.d +
-        '</span><div class="sec">Upgrades</div><div class="grid">' +
+        '</span><div class="sec">Showroom</div><div class="show">' +
+        SUPER.map(([id, name, price]) => {
+          const c = CARS[id],
+            mine = owns(me, id),
+            bar = (l, v) =>
+              '<div class="st"><span>' +
+              l +
+              '</span><i><u style="width:' +
+              Math.round(v * 100) +
+              '%"></u></i></div>';
+          return (
+            '<div class="sc' +
+            (me.body === id ? ' on' : '') +
+            '"><canvas class="pv" width="320" height="170" data-b="' +
+            id +
+            '"></canvas><b>' +
+            name +
+            '</b><small>' +
+            c.d +
+            '</small>' +
+            bar('Speed', (c.ts - 0.9) / 0.42) +
+            bar('Acceleration', (c.ac - 0.85) / 0.5) +
+            bar('Handling', (c.hd - 0.85) / 0.4) +
+            bar('Toughness', (1.4 - c.tf) / 0.9) +
+            (mine
+              ? me.body === id
+                ? '<button class="btn" disabled>Driving</button>'
+                : '<button class="btn alt" data-a="gbody" data-v="' + id + '">Drive</button>'
+              : '<button class="btn" data-a="buycar" data-v="' +
+                id +
+                '"' +
+                (me.points < price ? ' disabled' : '') +
+                '>' +
+                price +
+                ' pts</button>') +
+            '</div>'
+          );
+        }).join('') +
+        '</div><div class="sec">Upgrades</div><div class="grid">' +
         UPG.map(u => {
           const lv = me.upg[u.id] || 0,
             mx = lv >= u.max,
@@ -2240,6 +2337,51 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '</div>' +
         '<button class="btn alt" data-a="menu">Back</button>',
     );
+    ov.querySelectorAll('canvas.pv').forEach(c => preview(c, c.dataset.b, me.color));
+  }
+  /* draw a car into a small canvas for the showroom */
+  function preview(c, body, col) {
+    const main = ctx,
+      g = c.getContext('2d'),
+      bg = g.createLinearGradient(0, 0, 0, c.height);
+    bg.addColorStop(0, '#2a2552');
+    bg.addColorStop(0.62, '#4a2f5e');
+    bg.addColorStop(0.63, '#1c1a30');
+    bg.addColorStop(1, '#0f0e1c');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, c.width, c.height);
+    const sp = g.createRadialGradient(
+      c.width / 2,
+      c.height * 0.63,
+      4,
+      c.width / 2,
+      c.height * 0.63,
+      c.width * 0.45,
+    );
+    sp.addColorStop(0, 'rgba(255,193,94,.45)');
+    sp.addColorStop(1, 'rgba(255,193,94,0)');
+    g.fillStyle = sp;
+    g.fillRect(0, 0, c.width, c.height);
+    ctx = g;
+    try {
+      car(c.width / 2, c.height * 0.86, c.width * 0.62, col, 0, 0, 1, body);
+    } finally {
+      ctx = main;
+    }
+  }
+  function buyCar(id) {
+    reloadStore();
+    const s = SUPER.find(x => x[0] === id);
+    if (!s || owns(me, id) || me.points < s[2]) return;
+    me.points -= s[2];
+    me.owned = (me.owned || []).concat(id);
+    me.body = id;
+    applyUp();
+    save();
+    fanfare();
+    confetti(50);
+    toast(s[1] + ' is yours');
+    showGarage();
   }
   function buy(id) {
     reloadStore();
@@ -2368,11 +2510,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     else if (a === 'cin') cloudGo('in');
     else if (a === 'cup') cloudGo('up');
     else if (a === 'creset') cloudGo('reset');
-    else if (a === 'cout') {
-      if (window.cloud) window.cloud.signOut();
-      cUser = null;
-      showMenu();
-    } else if (a === 'col') {
+    else if (a === 'cout') cloudSignOut();
+    else if (a === 'col') {
       selCol = v;
       ov.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.v === v));
     } else if (a === 'body') {
@@ -2380,7 +2519,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ov.querySelectorAll('[data-a=body]').forEach(s => s.classList.toggle('on', s.dataset.v === v));
       const cd = $('cdesc');
       if (cd) cd.textContent = CARS[v].d;
-    } else if (a === 'gbody') {
+    } else if (a === 'buycar') buyCar(v);
+    else if (a === 'gbody') {
+      if (!owns(me, v)) return;
       me.body = v;
       save();
       applyUp();
@@ -2496,6 +2637,21 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       else if (!B) speed += DEC * dt * (state === 'done' ? 2 : 1);
       if (B) speed += BRK * dt;
       /* drift: hold Z / C / the Drift button, or press D to keep it on, while steering. It carries you round bends, scrubs a little speed and refills nitro */
+      if (DR && !reduce && Math.random() < dt * 30) {
+        const pw = Math.min(W * 0.24, H * 0.42);
+        for (const sx of [-0.4, 0.4])
+          sparks.push({
+            x: W / 2 + pw * sx,
+            y: H * 0.95,
+            vx: (Math.random() - 0.5) * 60 - Math.sign(steer) * 40,
+            vy: -40 - Math.random() * 40,
+            l: 0.9,
+            t: 0,
+            g: -20,
+            col: 'rgba(225,220,230,.5)',
+            sz: 12 + Math.random() * 10,
+          });
+      }
       if (DR) {
         speed -= MAXS * 0.1 * dt;
         nit = Math.min(100, nit + dt * 16);
@@ -2965,6 +3121,35 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ctx.fill();
     }
   }
+  /* soft drifting clouds (x, height, size, puffs) and the sun's screen position for flares and road glare */
+  const CLOUDS = Array.from({ length: 9 }, (_, i) => [
+    i / 9 + Math.random() * 0.08,
+    0.06 + Math.random() * 0.22,
+    0.6 + Math.random() * 0.9,
+    3 + ((Math.random() * 3) | 0),
+  ]);
+  let sunX = 0,
+    sunY = 0,
+    sunR = 0;
+  function clouds() {
+    const tint = TH.stars ? 'rgba(200,190,255,' : 'rgba(255,248,240,';
+    for (const c of CLOUDS) {
+      const M = W * 1.4,
+        x = ((((c[0] * M - off1 * 0.05 - tg * 6) % M) + M) % M) - W * 0.2,
+        y = H * c[1],
+        r = H * 0.05 * c[2];
+      for (let i = 0; i < c[3]; i++) {
+        const px = x + (i - c[3] / 2) * r * 0.9,
+          py = y + Math.sin(i * 2.3) * r * 0.2,
+          rad = r * (0.8 + 0.4 * Math.sin(i * 1.7 + c[2])),
+          g = ctx.createRadialGradient(px, py, 0, px, py, rad);
+        g.addColorStop(0, tint + (TH.stars ? 0.1 : 0.32) + ')');
+        g.addColorStop(1, tint + '0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(px - rad, py - rad, rad * 2, rad * 2);
+      }
+    }
+  }
   function sky() {
     const S = TH.sky,
       g = ctx.createLinearGradient(0, 0, 0, H / 2);
@@ -2995,6 +3180,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ctx.beginPath();
     ctx.arc(sx, sy, r, 0, 7);
     ctx.fill();
+    sunX = sx;
+    sunY = sy;
+    sunR = r;
+    if (!reduce) clouds();
     mtn(off1 * 0.5, H * 0.14, TH.mtn[0], 0.006);
     if (TH.big) fuji();
     if (TH.lm === 'taj') taj();
@@ -3081,6 +3270,11 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ctx.beginPath();
     ctx.ellipse(0, 0, w * 0.55, h * 0.14, 0, 0, 7);
     ctx.fill();
+    if (isSuper(body)) {
+      supercar(w, h, col, glow, body, big, flame);
+      ctx.restore();
+      return;
+    }
     const th = vn ? 0.38 : wd ? 0.3 : rs ? 0.28 : pu ? 0.42 : 0.32;
     ctx.fillStyle = '#0d0b16';
     rr(-w * 0.5, -h * th, w * 0.15, h * th, w * 0.03);
@@ -3095,6 +3289,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       bh = wd ? 0.44 : rs ? 0.4 : vn ? 0.56 : pu ? 0.5 : 0.48;
     ctx.fillStyle = col;
     rr(-w * bx, -h * bt, w * bx * 2, h * bh, w * 0.08);
+    if (big) {
+      ctx.fillStyle = gloss(-h * bt, -h * (bt - bh));
+      rr(-w * bx, -h * bt, w * bx * 2, h * bh, w * 0.08);
+    }
     // cabin
     const cab = (x, t, wd2, hh, r) => {
       ctx.fillStyle = col;
@@ -3221,6 +3419,246 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
     }
     ctx.restore();
+  }
+  /* lighten (a > 0) or darken (a < 0) a #rrggbb colour */
+  function shade(hex, a) {
+    const n = parseInt(hex.slice(1), 16),
+      t = a > 0 ? 255 : 0,
+      k = Math.abs(a),
+      m = v => Math.round(v + (t - v) * k);
+    return 'rgb(' + m(n >> 16) + ',' + m((n >> 8) & 255) + ',' + m(n & 255) + ')';
+  }
+  /* clear-coat: a soft light band on top and shade underneath, laid over any paint */
+  function gloss(y0, y1) {
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    g.addColorStop(0, 'rgba(255,255,255,.38)');
+    g.addColorStop(0.18, 'rgba(255,255,255,.08)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,.38)');
+    return g;
+  }
+  function path(pts, w, h) {
+    ctx.beginPath();
+    pts.forEach((p, i) =>
+      p.length === 2
+        ? (i ? ctx.lineTo : ctx.moveTo).call(ctx, w * p[0], -h * p[1])
+        : ctx.quadraticCurveTo(w * p[0], -h * p[1], w * p[2], -h * p[3]),
+    );
+    ctx.closePath();
+  }
+  const mirror = pts =>
+    pts.concat(
+      pts
+        .slice()
+        .reverse()
+        .map(p => (p.length === 2 ? [-p[0], p[1]] : [-p[2], p[3], -p[0], p[1]])),
+    );
+  /* supercars, seen from behind: wide and low, metallic paint, LED lights, diffusers */
+  const SHAPE = {
+    toro: mirror([
+      [-0.55, 0.15],
+      [-0.56, 0.5],
+      [-0.42, 0.64],
+      [-0.2, 0.8],
+    ]),
+    rosso: mirror([
+      [-0.54, 0.15],
+      [-0.6, 0.6, -0.38, 0.66],
+      [-0.24, 0.86, 0, 0.86],
+    ]),
+    veyra: mirror([
+      [-0.55, 0.15],
+      [-0.56, 0.58],
+      [-0.52, 0.74, -0.3, 0.76],
+      [-0.14, 0.92, 0, 0.92],
+    ]),
+    phantom: mirror([
+      [-0.56, 0.15],
+      [-0.57, 0.46],
+      [-0.44, 0.6],
+      [-0.18, 0.74],
+    ]),
+  };
+  function supercar(w, h, col, glow, b, big, flame) {
+    const lw = v => Math.max(1, w * v);
+    // tyres
+    ctx.fillStyle = '#0b0a12';
+    rr(-w * 0.53, -h * 0.3, w * 0.18, h * 0.3, w * 0.035);
+    rr(w * 0.35, -h * 0.3, w * 0.18, h * 0.3, w * 0.035);
+    // body in metallic paint
+    const top = { toro: 0.8, rosso: 0.86, veyra: 0.92, phantom: 0.74 }[b];
+    const pg = ctx.createLinearGradient(0, -h * top, 0, -h * 0.12);
+    pg.addColorStop(0, shade(col, 0.45));
+    pg.addColorStop(0.35, col);
+    pg.addColorStop(0.7, shade(col, -0.25));
+    pg.addColorStop(1, shade(col, -0.6));
+    ctx.fillStyle = pg;
+    path(SHAPE[b], w, h);
+    ctx.fill();
+    // Veyra: two-tone dark upper body
+    if (b === 'veyra') {
+      ctx.save();
+      path(SHAPE[b], w, h);
+      ctx.clip();
+      ctx.fillStyle = '#121019';
+      ctx.fillRect(-w * 0.6, -h * 1, w * 1.2, h * 0.36);
+      ctx.restore();
+    }
+    // rear glass with a sky reflection
+    const gl = {
+      toro: [0.16, 0.1, 0.76, 0.6],
+      rosso: [0.2, 0.12, 0.83, 0.64],
+      veyra: [0.22, 0.12, 0.9, 0.7],
+      phantom: [0.14, 0.08, 0.71, 0.58],
+    }[b];
+    const gg = ctx.createLinearGradient(0, -h * gl[2], 0, -h * gl[3]);
+    gg.addColorStop(0, '#3a3a5a');
+    gg.addColorStop(0.5, '#120f1c');
+    gg.addColorStop(1, '#07060c');
+    ctx.fillStyle = gg;
+    path(
+      [
+        [-gl[0], gl[3]],
+        [-gl[1], gl[2]],
+        [gl[1], gl[2]],
+        [gl[0], gl[3]],
+      ],
+      w,
+      h,
+    );
+    ctx.fill();
+    if (big) {
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = lw(0.012);
+      ctx.beginPath();
+      ctx.moveTo(-w * gl[1] * 0.6, -h * (gl[2] - 0.02));
+      ctx.lineTo(-w * gl[0] * 0.3, -h * (gl[3] + 0.02));
+      ctx.stroke();
+    }
+    // engine-cover louvres (Toro, Phantom)
+    if (big && (b === 'toro' || b === 'phantom')) {
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      for (let i = 0; i < 4; i++)
+        ctx.fillRect(-w * 0.13, -h * (gl[3] - 0.04 - i * 0.035), w * 0.26, h * 0.016);
+    }
+    // clear-coat and a bright shoulder line
+    ctx.fillStyle = gloss(-h * top, -h * 0.15);
+    path(SHAPE[b], w, h);
+    ctx.fill();
+    if (big) {
+      ctx.strokeStyle = 'rgba(255,255,255,.35)';
+      ctx.lineWidth = lw(0.01);
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.5, -h * 0.5);
+      ctx.lineTo(-w * 0.3, -h * 0.58);
+      ctx.moveTo(w * 0.5, -h * 0.5);
+      ctx.lineTo(w * 0.3, -h * 0.58);
+      ctx.stroke();
+    }
+    // rear lights
+    ctx.fillStyle = '#ff2f3f';
+    ctx.strokeStyle = '#ff2f3f';
+    if (glow) {
+      ctx.shadowColor = '#ff3040';
+      ctx.shadowBlur = w * 0.22;
+    }
+    if (b === 'toro') {
+      ctx.lineWidth = lw(0.022);
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(sx * w * 0.5, -h * 0.5);
+        ctx.lineTo(sx * w * 0.36, -h * 0.44);
+        ctx.lineTo(sx * w * 0.22, -h * 0.5);
+        ctx.moveTo(sx * w * 0.36, -h * 0.44);
+        ctx.lineTo(sx * w * 0.36, -h * 0.34);
+        ctx.stroke();
+      }
+    } else if (b === 'rosso') {
+      for (const x of [-0.42, -0.28, 0.28, 0.42]) {
+        ctx.beginPath();
+        ctx.arc(w * x, -h * 0.5, w * 0.045, 0, 7);
+        ctx.fill();
+      }
+    } else if (b === 'veyra') {
+      rr(-w * 0.5, -h * 0.6, w, h * 0.045, w * 0.02);
+    } else {
+      ctx.lineWidth = lw(0.02);
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(sx * w * 0.38, -h * 0.44, w * 0.09, h * 0.06, 0, 0, 7);
+        ctx.stroke();
+      }
+    }
+    ctx.shadowBlur = 0;
+    // diffuser with fins
+    ctx.fillStyle = '#0d0c14';
+    path(
+      [
+        [-0.46, 0.13],
+        [-0.4, 0.3],
+        [0.4, 0.3],
+        [0.46, 0.13],
+      ],
+      w,
+      h,
+    );
+    ctx.fill();
+    if (big) {
+      ctx.fillStyle = '#2b2838';
+      for (let i = -3; i <= 3; i++) ctx.fillRect(w * i * 0.1 - w * 0.008, -h * 0.3, w * 0.016, h * 0.17);
+    }
+    // exhausts
+    ctx.fillStyle = '#4a4656';
+    const ex = {
+      toro: [[0, 0.07]],
+      rosso: [
+        [-0.2, 0.04],
+        [-0.12, 0.04],
+        [0.12, 0.04],
+        [0.2, 0.04],
+      ],
+      veyra: [[0, 0.09]],
+      phantom: [[0, 0.06]],
+    }[b];
+    for (const [x, r] of ex) {
+      ctx.beginPath();
+      ctx.ellipse(w * x, -h * 0.36, w * r, h * r * 1.3, 0, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = '#07060c';
+      ctx.beginPath();
+      ctx.ellipse(w * x, -h * 0.36, w * r * 0.65, h * r * 0.85, 0, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = '#4a4656';
+    }
+    // rear wing (Veyra, Phantom)
+    if (b === 'veyra' || b === 'phantom') {
+      const wy = b === 'phantom' ? 1.06 : 0.98;
+      ctx.fillStyle = '#121019';
+      ctx.fillRect(-w * 0.26, -h * wy, w * 0.03, h * (wy - 0.7));
+      ctx.fillRect(w * 0.23, -h * wy, w * 0.03, h * (wy - 0.7));
+      const wg = ctx.createLinearGradient(0, -h * (wy + 0.08), 0, -h * wy);
+      wg.addColorStop(0, b === 'phantom' ? shade(col, 0.3) : '#2b2838');
+      wg.addColorStop(1, b === 'phantom' ? shade(col, -0.4) : '#0b0a12');
+      ctx.fillStyle = wg;
+      rr(-w * 0.52, -h * (wy + 0.08), w * 1.04, h * 0.08, w * 0.02);
+    }
+    if (big) {
+      ctx.fillStyle = '#e8e2cf';
+      rr(-w * 0.08, -h * 0.25, w * 0.16, h * 0.06, w * 0.01);
+    }
+    if (flame) {
+      for (const [x] of ex) {
+        const fh = w * (0.18 + Math.random() * 0.14),
+          g = ctx.createLinearGradient(0, -h * 0.36, 0, fh);
+        g.addColorStop(0, '#bfe9ff');
+        g.addColorStop(0.4, '#ffb04a');
+        g.addColorStop(1, 'rgba(255,90,40,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(w * x, -h * 0.36 + fh * 0.4, w * 0.05, fh * 0.7, 0, 0, 7);
+        ctx.fill();
+      }
+    }
   }
   /* Mumbai hazards, seen from behind */
   function rick(cx, by, w) {
@@ -3548,6 +3986,78 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
   }
 
+  /* light on the road: warm glare under the sun and a haze band that melts the horizon into the sky */
+  function roadLight() {
+    const hz = H / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(sunX, hz, 0, sunX, hz, W * 0.55);
+    gl.addColorStop(0, 'rgba(' + TH.sun[2] + ',' + (TH.stars ? 0.08 : 0.2) + ')');
+    gl.addColorStop(1, 'rgba(' + TH.sun[2] + ',0)');
+    ctx.fillStyle = gl;
+    ctx.fillRect(0, hz, W, H - hz);
+    ctx.restore();
+    const hzg = ctx.createLinearGradient(0, hz - H * 0.03, 0, hz + H * 0.09);
+    hzg.addColorStop(0, 'rgba(255,255,255,0)');
+    hzg.addColorStop(0.35, TH.fog + '88');
+    hzg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hzg;
+    ctx.fillRect(0, hz - H * 0.03, W, H * 0.12);
+  }
+  /* lens flare: ghosts along the line from the sun through the centre of the screen */
+  function flare() {
+    if (reduce || TH.stars || sunX < -sunR || sunX > W + sunR) return;
+    const cx = W / 2,
+      cy = H / 2,
+      dx = cx - sunX,
+      dy = cy - sunY,
+      vis = 1 - Math.min(1, Math.abs(sunX - cx) / (W * 0.8));
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [t, r, a, c] of [
+      [0.5, 0.05, 0.1, '255,210,150'],
+      [0.9, 0.09, 0.07, '255,150,90'],
+      [1.3, 0.03, 0.12, '180,220,255'],
+      [1.6, 0.14, 0.05, '255,190,120'],
+    ]) {
+      const x = sunX + dx * t,
+        y = sunY + dy * t,
+        rad = H * r,
+        g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, 'rgba(' + c + ',' + a * vis + ')');
+      g.addColorStop(0.7, 'rgba(' + c + ',' + a * vis * 0.5 + ')');
+      g.addColorStop(1, 'rgba(' + c + ',0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, 7);
+      ctx.fill();
+    }
+    // light streak through the sun
+    const st = ctx.createLinearGradient(sunX - W * 0.4, 0, sunX + W * 0.4, 0);
+    st.addColorStop(0, 'rgba(255,220,180,0)');
+    st.addColorStop(0.5, 'rgba(255,220,180,' + 0.09 * vis + ')');
+    st.addColorStop(1, 'rgba(255,220,180,0)');
+    ctx.fillStyle = st;
+    ctx.fillRect(sunX - W * 0.4, sunY - 1, W * 0.8, 2);
+    ctx.restore();
+  }
+  /* rushing streaks at the screen edges once you are flying */
+  function speedLines(sf) {
+    if (reduce || sf < 0.7 || state === 'menu') return;
+    const a = (sf - 0.7) / 0.5;
+    ctx.strokeStyle = 'rgba(255,244,224,' + 0.22 * a + ')';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < 14; i++) {
+      const side = i % 2 ? 1 : -1,
+        y = H * (0.55 + Math.random() * 0.45),
+        x = W / 2 + side * W * (0.32 + Math.random() * 0.2),
+        len = W * (0.06 + Math.random() * 0.1) * a;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + side * len, y + len * 0.35);
+    }
+    ctx.stroke();
+  }
   function render() {
     ctx.save();
     if (shake > 0.1) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -3572,6 +4082,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       drawSeg(s, n);
       maxy = s.p2.sy;
     }
+    roadLight();
     for (let n = DRAW - 1; n >= 0; n--) {
       const s = segs[(bs.i + n) % N];
       if (s.p1.cz <= CD || (!s.sp.length && !s.cars.length && !s.gate)) continue;
@@ -3632,6 +4143,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     const sf = speed / MAXS,
       pw = Math.min(W * 0.24, H * 0.42),
       bob = Math.sin(tg * 45) * sf * 2;
+    speedLines(sf);
     car(
       W / 2,
       H - H * 0.045 + bob,
@@ -3681,6 +4193,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
       ctx.stroke();
     }
+    flare();
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, W, H);
     if (state === 'count' || goT > 0) {
