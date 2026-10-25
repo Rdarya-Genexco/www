@@ -306,7 +306,6 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     { id: 'handling', name: 'Handling', desc: 'Tighter steering', max: 3, cost: [20, 80, 200] },
     { id: 'grip', name: 'Grip', desc: 'Less grass drag', max: 3, cost: [20, 60, 140] },
   ];
-  /* each car shape drives differently: ts = top speed, ac = acceleration, hd = handling, tf = damage taken */
   /* car stats come from js/cars.js: ts = top speed, ac = acceleration, hd = handling, tf = damage taken */
   const CARS = {};
   for (const c of window.CAR_LIST)
@@ -316,7 +315,11 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       hd: c.stats.handling,
       tf: c.stats.damage,
       d: c.desc,
+      kmh: c.topKmh,
     };
+  /* speedometer: MAXS is the starter coupe's top speed; CAP is the hard limit (300 km/h) in game units */
+  const KMH = window.SPEED.base,
+    CAP = (MAXS * window.SPEED.max) / window.SPEED.base;
   const UP = { ts: 1, ac: 1, hd: 1, gr: 0, tf: 1 };
   function applyUp() {
     const u = (me && me.upg) || {},
@@ -1099,7 +1102,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     selBody = 'coupe';
   /* starter cars [id, name] and supercars [id, name, price], all from js/cars.js */
   const BODIES = window.CAR_LIST.filter(c => !c.price).map(c => [c.id, c.show]);
-  const SUPER = window.CAR_LIST.filter(c => c.price).map(c => [c.id, c.show, c.price]);
+  const SUPER = window.CAR_LIST.filter(c => c.price)
+    .sort((a, b) => a.price - b.price) // showroom in price order
+    .map(c => [c.id, c.show, c.price]);
   const LOOK2D = Object.fromEntries(window.CAR_LIST.map(c => [c.id, c.look2d]));
   const isSuper = b => SUPER.some(s => s[0] === b);
   const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
@@ -2270,7 +2275,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
             '</b><small>' +
             c.d +
             '</small>' +
-            bar('Speed', (c.ts - 0.9) / 0.42) +
+            bar('Top speed ' + c.kmh, (c.kmh - 200) / (window.SPEED.max - 200)) +
             bar('Acceleration', (c.ac - 0.85) / 0.5) +
             bar('Handling', (c.hd - 0.85) / 0.4) +
             bar('Toughness', (1.4 - c.tf) / 0.9) +
@@ -2676,9 +2681,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         spark(W / 2 + (px > 0 ? 1 : -1) * pw * 0.42, H * 0.955, 2, 260);
       }
       px = clamp(px, -2.6, 2.6);
-      const lim = MAXS * UP.ts * (1 + 0.35 * boost) * (1 - 0.18 * dmg);
-      if (speed > lim) speed = Math.max(lim, speed - MAXS * 0.4 * dt);
-      speed = Math.max(0, speed);
+      const lim = Math.min(CAP, MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg));
+      // above the limit (nitro ending, damage): ease back, faster than gas and nitro can push
+      if (speed > lim) speed = Math.max(lim, speed - MAXS * 1.2 * dt);
+      speed = clamp(speed, 0, CAP);
       steer += (R - L + X - steer) * Math.min(1, dt * 8);
     }
     CD = 0.84 - 0.12 * boost;
@@ -2830,7 +2836,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       if (toastT <= 0) $('toast').className = '';
     }
     snd();
-    $('kmh').textContent = Math.round((speed / MAXS) * 260);
+    $('kmh').textContent = Math.round((speed / MAXS) * KMH);
     $('nf').style.width = clamp(nit, 0, 100) + '%';
     $('df').style.width = Math.round(100 - dmg * 100) + '%';
     $('df').style.background = dmg > 0.65 ? '#ff5a5a' : dmg > 0.35 ? '#ffc15e' : '#6ff0e4';

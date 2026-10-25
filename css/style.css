@@ -1014,7 +1014,7 @@ kbd {
 }
 .sc .st {
   display: grid;
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: 122px 1fr;
   align-items: center;
   gap: 8px;
   font-size: 15px;

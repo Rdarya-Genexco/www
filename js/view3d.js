@@ -12,7 +12,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 const G = window.__game;
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
 /* FS is set so the motion on screen matches the speedometer (260 km/h at full speed) */
-const FS = 0.006,
+const FS = window.SPEED.base / 3.6 / 12000,
   LS = 0.005,
   YS = 0.0016,
   CAR = 1.35; // car models are scaled up to match the game's wide lanes
@@ -421,6 +421,13 @@ function start() {
             xb.rotation.z = a;
             g.add(xb);
           }
+    else if (s.lights === 'ring')
+      // round ring tail lights, two each side
+      for (const x of [-0.72, -0.45, 0.45, 0.72]) {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 8, 20), M.tail);
+        ring.position.set(x, ly, rz);
+        g.add(ring);
+      }
     else if (s.lights === 'y')
       for (const sx of [-1, 1]) {
         g.add(box(0.5, 0.04, 0.03, M.tail, sx * 0.6, ly, rz));
@@ -465,12 +472,20 @@ function start() {
     }
     if (s.spine) g.add(taper(0.06, 0.03, 0.18, 1.4, 1.0, M.black, 0, r + s.roof + 0.1, s.rf + 0.7, 0.2));
     g.add(box(0.5, 0.13, 0.02, M.plate, 0, r + s.deck * 0.38, rz + 0.01));
-    const ex = s.sup ? (s.exhaust === 'quad' ? [-0.42, -0.3, 0.3, 0.42] : [0]) : [0.55];
+    const ex = s.sup
+      ? s.exhaust === 'quad'
+        ? [-0.42, -0.3, 0.3, 0.42]
+        : s.exhaust === 'twin'
+          ? [-0.13, 0.13]
+          : [0]
+      : [0.55];
     for (const x of ex) {
-      const big = s.sup && ex.length === 1,
-        e = cyl(big ? 0.12 : 0.05, big ? 0.12 : 0.05, 0.2, M.chrome, 16);
+      const big = s.sup && ex.length < 3,
+        er = ex.length === 2 ? 0.08 : big ? 0.12 : 0.05,
+        e = cyl(er, er, 0.2, M.chrome, 16);
       e.rotation.x = Math.PI / 2;
-      e.position.set(x, r + 0.14, rz);
+      // twin exhausts sit high in the tail (McLaren style)
+      e.position.set(x, s.exhaust === 'twin' ? r + s.deck * 0.55 : r + 0.14, rz);
       g.add(e);
     }
     // wheels, slightly proud of the body

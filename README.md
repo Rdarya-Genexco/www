@@ -61,25 +61,31 @@ Arrow keys steer, Up/W gas, Down/S brake, Space nitro, D drift on/off, Z/C hold 
 All cars live in `js/cars.js`. The top of that file has the settings you're most likely to change:
 
 - `USE_REAL_NAMES`: `false` shows the game names, `true` shows the real car names. Currently on (the game shows real names); real brand names are trademarks.
+- `MAX_KMH`: the hard speed limit (300).
+- `TOP_SPEEDS`: each car's top speed in km/h.
 - `PRICES`: the points each supercar costs.
 - `CAR_LIST`: each car's `name`, `realName`, `stats`, `desc`, 3D `shape` and `style`.
 
 Don't change a car's `id` once players own it, because saves refer to cars by id.
 
-| In-game name | Styled after | Price | Speed | Accel | Handling | Damage taken |
+| Game name | Real car | Price | Top speed (km/h) | Accel | Handling | Damage taken |
 |---|---|---|---|---|---|---|
-| Coupe | Generic sports coupe | free | 1.00 | 1.00 | 1.00 | 1.00 |
-| Hatch | Generic hot hatch | free | 0.96 | 1.10 | 1.12 | 1.00 |
-| Wedge | Generic 80s wedge sports car | free | 1.06 | 0.95 | 0.90 | 1.00 |
-| Van | Generic minivan | free | 0.93 | 0.90 | 0.95 | 0.50 |
-| Roadster | Generic open-top roadster | free | 1.00 | 1.05 | 1.20 | 1.35 |
-| Pickup | Generic pickup truck | free | 0.97 | 0.92 | 1.00 | 0.65 |
-| Toro V12 | Lamborghini Centenario | 150 | 1.12 | 1.18 | 1.04 | 1.05 |
-| Rosso GT | Ferrari 812 Superfast | 300 | 1.16 | 1.20 | 1.18 | 1.00 |
-| Veyra 16 | Bugatti Chiron | 600 | 1.24 | 1.26 | 1.10 | 0.85 |
-| Veyra Dive | Bugatti Divo | 900 | 1.22 | 1.25 | 1.22 | 0.90 |
-| Phantom X | Hypercar concept (not a real model) | 1000 | 1.30 | 1.34 | 1.24 | 0.85 |
-| Veyra 300+ | Bugatti Chiron Super Sport 300+ | 1200 | 1.32 | 1.30 | 1.08 | 0.85 |
-| Veyra Bolt | Bugatti Bolide | 1500 | 1.34 | 1.40 | 1.30 | 0.70 |
+| Coupe | Generic sports coupe | free | 230 | 1.00 | 1.00 | 1.00 |
+| Hatch | Generic hot hatch | free | 221 | 1.10 | 1.12 | 1.00 |
+| Wedge | Generic 80s wedge sports car | free | 244 | 0.95 | 0.90 | 1.00 |
+| Van | Generic minivan | free | 214 | 0.90 | 0.95 | 0.50 |
+| Roadster | Generic open-top roadster | free | 230 | 1.05 | 1.20 | 1.35 |
+| Pickup | Generic pickup truck | free | 223 | 0.92 | 1.00 | 0.65 |
+| Toro V12 | Lamborghini Centenario | 150 | 255 | 1.18 | 1.04 | 1.05 |
+| Rosso GT | Ferrari 812 Superfast | 300 | 262 | 1.20 | 1.18 | 1.00 |
+| Veyra 16 | Bugatti Chiron | 600 | 282 | 1.26 | 1.10 | 0.85 |
+| Veyra Dive | Bugatti Divo | 900 | 278 | 1.25 | 1.22 | 0.90 |
+| Phantom X | Hypercar concept (not a real model) | 1000 | 286 | 1.34 | 1.24 | 0.85 |
+| Veyra 300+ | Bugatti Chiron Super Sport 300+ | 1200 | 296 | 1.30 | 1.08 | 0.85 |
+| Orbit 720 | McLaren 720S | 450 | 266 | 1.24 | 1.20 | 0.95 |
+| Orbit S | McLaren Senna | 1100 | 288 | 1.32 | 1.32 | 0.85 |
+| Spectre R | Koenigsegg Regera | 1300 | 291 | 1.36 | 1.15 | 0.85 |
+| Spectre J | Koenigsegg Jesko | 1400 | 298 | 1.38 | 1.28 | 0.80 |
+| Veyra Bolt | Bugatti Bolide | 1500 | 300 | 1.40 | 1.30 | 0.70 |
 
-Stats are relative to the starter Coupe (1.00); Garage upgrades multiply on top.
+Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds are set in TOP_SPEEDS; Garage upgrades add up to 20% and nitro about 8%, but nothing goes faster than MAX_KMH (300 km/h).
