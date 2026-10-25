@@ -278,7 +278,7 @@ function buildTrack(lay){
   else if(s.i%4===2&&Math.random()<.6){const d=Math.random()<.5?-1:1;s.sp.push({t:'P',o:d*(1.6+Math.random()*3.5),z:.7+Math.random()*.7,k:Math.random()*TH.trees.length|0})}
  }
  /* Mumbai: potholes everywhere (never on the start straight or under a gate) */
- if(MAPS[mapSel].hz)for(const s of segs){s.ph=[];if(s.i>24&&s.i<N-6&&Math.random()<.42){const n=Math.random()<.3?2:1;for(let j=0;j<n;j++)s.ph.push({o:(Math.random()*2-1)*.85,w:.12+Math.random()*.1,f:Math.random()*.5+.25})}}
+ if(MAPS[mapSel].hz)for(const s of segs){s.ph=[];if(s.i>24&&s.i<N-6&&Math.random()<.15){const n=Math.random()<.15?2:1;for(let j=0;j<n;j++)s.ph.push({o:(Math.random()*2-1)*.85,w:.12+Math.random()*.1,f:Math.random()*.5+.25})}}
  segs[8].gate=1;CPF.forEach(f=>{const g=segs[Math.floor(N*f)];if(g)g.ph=[]});segs[8].ph=[];
  cpPos=CPF.map(f=>Math.floor(N*f)*SL);
  CPF.forEach(f=>{segs[Math.floor(N*f)].gate=2});
