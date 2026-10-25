@@ -332,7 +332,10 @@ function rivalStep(c,dt){
 let state='menu',mode='bots',pos=0,speed=0,px=0,steer=0,nit=100,boost=0,shake=0,cd=0,goT=0,time=0,lapStart=0,laps=[],lap=1,close=0,tg=0,off1=0,toastT=0,muted=false,gasOn=false,cpNext=0,pFin=false,pFt=0,lastCd=4,hudT=1,runId=0,selCol=COLS[0],placeNow=0,loginOpen=false,selBody='coupe';
 const BODIES=[['coupe','Coupe'],['hatch','Hatch'],['wedge','Wedge'],['van','Van'],['roadster','Roadster'],['pickup','Pickup']];
 const inp={L:0,R:0,G:0,B:0,N:0,X:0,D:0};
-let lph=-1,holes=0,dmg=0,da=0,drifting=false,dfx=0,tour=null,chal=null;
+let wreck=false,lph=-1,holes=0,dmg=0,da=0,drifting=false,dfx=0,tour=null,chal=null;
+/* Mumbai: the car can't be damaged. Everywhere else, reaching 0% wrecks it and you lose the race */
+const inv=()=>!!MAPS[mapSel].hz;
+function hurt(x){if(!inv())dmg=Math.min(1,dmg+x*UP.tf)}
 const vib=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
 /* shows the on-screen controls on every device (touch or mouse); 'keys' hides them on computers */
 function tui(){const on=ctl!=='keys'||coarse;document.body.classList.toggle('tui',on);document.body.classList.toggle('joy',ctl==='joy');auto=on}
@@ -411,25 +414,27 @@ function ranking(){
 
 /* ---------- race flow ---------- */
 function begin(m){loginOpen=false;audio();mode=m;runId++;LAPS=chal?chal.laps:lapsSel;wx=TH.rain?0:chal?(chal.wx?1:0):Math.random()<.25?1:0;ov.hidden=true;document.body.classList.add('play');document.body.classList.toggle('tt',m==='tt');
- pos=0;speed=0;px=0;steer=0;time=0;lapStart=0;laps=[];lap=1;nit=100;dmg=0;lph=-1;holes=0;da=0;dfx=0;boost=0;close=0;cpNext=0;pFin=false;pFt=0;sparks.length=0;lastCd=4;hudT=1;
+ pos=0;speed=0;px=0;steer=0;time=0;lapStart=0;laps=[];lap=1;nit=100;dmg=0;lph=-1;holes=0;wreck=false;da=0;dfx=0;boost=0;close=0;cpNext=0;pFin=false;pFt=0;sparks.length=0;lastCd=4;hudT=1;
  applyUp();state='count';spawn(m==='bots',false);cd=3.2;goT=0;syncSong();if(tour)setTimeout(()=>{if(state==='count')toast('Race '+(tour.i+1)+' of '+tour.maps.length+' · '+MAPS[mapSel].name,0,'cp')},100);if(wx)setTimeout(()=>{if(state==='count')toast('Rain · less grip',0,'cp')},1400)}
 function lapDone(){const lt=time-lapStart;lapStart=time;laps.push(lt);cpNext=0;
  if(me){const bl=bestLap(me);if(!bl||lt<bl){setBestLap(me,lt);save()}}
  if(laps.length>=LAPS){pFin=true;pFt=time;state='done';const pl=ranking().findIndex(r=>r.me);
   toast(mode!=='tt'?ORD[Math.min(pl,5)]+' · Chequered flag':'Chequered flag');fanfare();const id=runId,t0=Date.now(),chk=()=>{if(id!==runId)return;finish()};setTimeout(chk,4000)}
  else{lap=laps.length+1;toast('Lap '+laps.length+' done')}}
-function settle(){reloadStore();const rk=ranking(),place=rk.findIndex(r=>r.me);let pts=0,nb=false;
- if(mode!=='tt'){pts=PTS[Math.min(place,3)];roll(me);me.points+=pts;me.careerPts+=pts;me.seasonPts+=pts;me.races++;if(place===0)me.wins++;
+function settle(){reloadStore();const rk=ranking();let place=rk.findIndex(r=>r.me),pts=0,nb=false;
+ if(wreck){if(place<rk.length-1){rk.push(rk.splice(place,1)[0]);place=rk.length-1}roll(me);me.races++;if(chal)chal.res={ok:false,got:false}}
+ else if(mode!=='tt'){pts=PTS[Math.min(place,3)];roll(me);me.points+=pts;me.careerPts+=pts;me.seasonPts+=pts;me.races++;if(place===0)me.wins++;
   rk.forEach((r,i)=>{if(r.me)return;const b=league.bots[r.id];if(!b)return;roll(b);const p=PTS[Math.min(i,3)];b.seasonPts+=p;b.careerPts+=p;b.races++;if(i===0)b.wins++})}
  else if(chal){const ok=pFt<=chal.par,got=ok&&!(me.daily&&me.daily.d===chal.key&&me.daily.done);if(got){roll(me);me.daily={d:chal.key,done:1};me.points+=20;me.careerPts+=20;me.seasonPts+=20}nb=false;chal.res={ok,got}}
  else{const ob=bestTT(me);nb=!ob||pFt<ob;if(nb)setBestTT(me,pFt)}
- me.history.unshift({place:place+1,pts,time:pFt,mode,map:mapSel,ts:Date.now(),laps:laps.slice()});me.history=me.history.slice(0,10);save();
+ me.history.unshift({place:place+1,pts,time:wreck?0:pFt,wreck:wreck||undefined,mode,map:mapSel,ts:Date.now(),laps:laps.slice()});me.history=me.history.slice(0,10);save();
  return{rk,place,pts,nb}}
 function finish(){const R=settle();state='menu';spawn(false);document.body.classList.remove('play');
- const top=R.place<3&&mode!=='tt';if(top)confetti(R.place===0?80:R.place===1?35:15);
+ const top=!wreck&&R.place<3&&mode!=='tt';if(top)confetti(R.place===0?80:R.place===1?35:15);
  let h,tourHtml='',row='<div class="row"><button class="btn" data-a="again" id="go2">Race again</button><button class="btn alt" data-a="menu">Menu</button></div>';
  if(tour&&mode==='bots'){const T=tourDone(R);tourHtml=T.html;row=T.row}
- if(mode!=='tt'){
+ if(wreck){h='<h2>Wrecked</h2><p class="big">You lose</p><p>Your car hit 0%. No points this time. Upgrade in the Garage or pick a tougher car.</p>'+(mode!=='tt'?'<ul>'+R.rk.map((r,i)=>'<li class="'+(r.me?'me':'')+'"><span><i style="background:'+r.col+'"></i>'+(r.me?'DNF':(i+1)+'.')+' '+esc(r.name)+(r.me?' (you)':'')+'</span><b>'+(r.fin?fmt(r.ft):'—')+'</b></li>').join('')+'</ul>':'')}
+ else if(mode!=='tt'){
   h='<h2>'+(R.place===0?'Victory':'Chequered flag')+'</h2><p class="big">'+ORD[Math.min(R.place,5)]+' · '+fmt(pFt)+'</p><ul>'+
    R.rk.map((r,i)=>'<li class="'+(r.me?'me':'')+'"><span><i style="background:'+r.col+'"></i>'+(i+1)+'. '+esc(r.name)+(r.me?' (you)':'')+'</span><b>'+(r.fin?fmt(r.ft):'—')+'</b></li>').join('')+'</ul>'+
    '<div class="banner"><small>Points earned</small><b>+'+R.pts+'</b><small>Total '+me.points+' pts</small></div>';
@@ -492,7 +497,7 @@ function showHelp(){
 /* ---------- menus ---------- */
 function pickMap(id){loadMap(id);pos=0;px=0;cpNext=0;save();showMenu()}
 function ovSet(h){ov.innerHTML=h;ov.hidden=false;ov.scrollTop=0}
-function showMenu(){if(state==='done'&&pFin&&me)settle();else reloadStore();tour=null;chal=null;loginOpen=false;runId++;state='menu';spawn(false);document.body.classList.remove('play');
+function showMenu(){if(state==='done'&&(pFin||wreck)&&me)settle();else reloadStore();wreck=false;tour=null;chal=null;loginOpen=false;runId++;state='menu';spawn(false);document.body.classList.remove('play');
  if(!me)return showLogin();
  const t=tierOf(me.careerPts);
  ovSet('<h1>Worldwide<br>Wheels</h1><div class="who"><span class="tier" style="--c:'+t.c+'">'+t.icon+' '+t.label+'</span><b>'+esc(me.name)+'</b><span class="pt">'+me.points+' pts</span><button class="lnk" data-a="switch">Switch driver</button></div>'+
@@ -596,7 +601,7 @@ function update(dt){
  const np=pos+dt*speed;
  if(np>=TL){pos=np-TL;if(state==='race')lapDone()}else pos=np;
  if(state==='race'){const ps=segs[Math.floor((pos+PZ)/SL)%N];
-  if(ps.ph&&ps.ph.length&&lph!==ps.i){lph=ps.i;for(const h of ps.ph)if(Math.abs(px-h.o)<h.w+.06){speed*=.85;dmg=Math.min(1,dmg+.012*UP.tf);shake=reduce?0:10;vib(60);holes++;toast('Pothole',1);blip(70,.18,'square',.14);const pw=Math.min(W*.24,H*.42);sparks.push({x:W/2,y:H*.93,vx:0,vy:-60,l:.6,t:0,g:-20,col:'rgba(140,120,100,.6)',sz:22});break}}}
+  if(ps.ph&&ps.ph.length&&lph!==ps.i){lph=ps.i;for(const h of ps.ph)if(Math.abs(px-h.o)<h.w+.06){speed*=.85;hurt(.012);shake=reduce?0:10;vib(60);holes++;toast('Pothole',1);blip(70,.18,'square',.14);const pw=Math.min(W*.24,H*.42);sparks.push({x:W/2,y:H*.93,vx:0,vy:-60,l:.6,t:0,g:-20,col:'rgba(140,120,100,.6)',sz:22});break}}}
  if(state==='race'){time+=dt;
   if(cpNext<3&&pos>=cpPos[cpNext]&&pos<TL*.9){cpNext++;toast('Checkpoint '+cpNext+' · '+fmt(time-lapStart),0,'cp');cpSnd()}}
  off1+=seg.c*sf*dt*50;
@@ -611,14 +616,15 @@ function update(dt){
   if(ns!==c.s){const a=segs[c.s].cars;a.splice(a.indexOf(c),1);segs[ns].cars.push(c);c.s=ns}
   let dz=c.z-pp;if(dz>TL/2)dz-=TL;if(dz<-TL/2)dz+=TL;
   if(state==='race'){const dxo=Math.abs(c.o-px);
-   if(dz>0&&dz<SL*1.5&&dxo<.34&&speed>c.sp){speed=Math.max(c.sp,MAXS*.16)*.5;shake=reduce?0:14;px+=px>c.o?.12:-.12;dmg=Math.min(1,dmg+.1*UP.tf);vib(140);toast(c.hz==='cow'?'Holy cow!':c.hz==='cart'?'Bullock cart!':c.hz==='rick'?'Rickshaw!':'Crash',1);blip(90,.3,'sawtooth');spark(W/2,H*.9,24,520)}
-   else if(c.rv&&c.tr==='swipe'&&!(c.sw>0)&&Math.abs(dz)<SL*1.2&&dxo<.3){c.sw=1.2;px+=px>c.o?.14:-.14;speed*=.96;dmg=Math.min(1,dmg+.03*UP.tf);vib(70);shake=reduce?0:6;toast('Side swipe',1);blip(150,.15,'sawtooth');spark(W/2,H*.92,10,300)}
+   if(dz>0&&dz<SL*1.5&&dxo<.34&&speed>c.sp){speed=Math.max(c.sp,MAXS*.16)*.5;shake=reduce?0:14;px+=px>c.o?.12:-.12;hurt(.1);vib(140);toast(c.hz==='cow'?'Holy cow!':c.hz==='cart'?'Bullock cart!':c.hz==='rick'?'Rickshaw!':'Crash',1);blip(90,.3,'sawtooth');spark(W/2,H*.9,24,520)}
+   else if(c.rv&&c.tr==='swipe'&&!(c.sw>0)&&Math.abs(dz)<SL*1.2&&dxo<.3){c.sw=1.2;px+=px>c.o?.14:-.14;speed*=.96;hurt(.03);vib(70);shake=reduce?0:6;toast('Side swipe',1);blip(150,.15,'sawtooth');spark(W/2,H*.92,10,300)}
    if(c.pd>0&&dz<=0&&c.pd<SL*6&&dxo<.6){nit=Math.min(100,nit+14);close++;toast('Close pass');blip(700,.14,'sine')}}
   c.pd=dz}
+ if(state==='race'&&dmg>=1&&!inv()){wreck=true;state='done';toast('Wrecked · you lose',1);blip(60,.6,'sawtooth',.2);vib(300);const id=runId;setTimeout(()=>{if(id===runId)finish()},3000)}
  if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').className=''}
  snd();
  $('kmh').textContent=Math.round(speed/MAXS*260);
- $('nf').style.width=clamp(nit,0,100)+'%';$('df').style.width=Math.round(100-dmg*100)+'%';$('df').style.background=dmg>.65?'#ff5a5a':dmg>.35?'#ffc15e':'#6ff0e4';$('dl').textContent=Math.round(100-dmg*100)+'%';
+ $('nf').style.width=clamp(nit,0,100)+'%';$('df').style.width=Math.round(100-dmg*100)+'%';$('df').style.background=dmg>.65?'#ff5a5a':dmg>.35?'#ffc15e':'#6ff0e4';$('dl').textContent=inv()?'INVINCIBLE':Math.round(100-dmg*100)+'%';
  $('nl').textContent=boost>.3?'BOOST':nit<20?'LOW':'READY';
  $('lap').textContent=innerWidth<520?'Lap '+Math.min(lap,LAPS)+'/'+LAPS:'Lap '+Math.min(lap,LAPS)+' of '+LAPS+' · '+Math.min(100,Math.floor(dist()/(LAPS*TL)*100))+'%';
  $('tm').textContent=fmt(time);
@@ -831,7 +837,7 @@ let lt=0;
 function loop(t){const dt=clamp((t-lt)/1000||0,0,.05);lt=t;update(dt);render();requestAnimationFrame(loop)}
 showMenu();
 requestAnimationFrame(loop);
-window.__ghat={get dmg(){return dmg},get drifting(){return drifting},get nit(){return nit},inp,get px(){return px},get cars(){return cars},setMap:pickMap,get map(){return mapSel},warp(p){pos=p},get state(){return state},get me(){return me},ranking,begin,get pos(){return pos},get speed(){return speed},TL};
+window.__ghat={hurt,get dmg(){return dmg},get drifting(){return drifting},get nit(){return nit},inp,get px(){return px},get cars(){return cars},setMap:pickMap,get map(){return mapSel},warp(p){pos=p},get state(){return state},get me(){return me},ranking,begin,get pos(){return pos},get speed(){return speed},TL};
 })();
 </script>
 </body>
