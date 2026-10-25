@@ -160,7 +160,8 @@ const CAR_LIST = [
 /* ---------- derived values (no need to edit below) ---------- */
 for (const c of CAR_LIST) {
   c.price = PRICES[c.id] || 0;
-  c.show = USE_REAL_NAMES ? c.realName : c.name;
+  // real names only for cars based on a real model (starters and the concept keep their game name)
+  c.show = USE_REAL_NAMES && c.price && !/not a real/i.test(c.realName) ? c.realName : c.name;
   c.look2d = c.look2d || (c.price && !['toro', 'rosso', 'veyra', 'phantom'].includes(c.id) ? 'veyra' : c.id);
 }
 window.CAR_LIST = CAR_LIST;
