@@ -1134,6 +1134,7 @@ function start() {
     const now = performance.now(),
       dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
+    if (active()) return showroom(dt);
     const pos = G.pos,
       px = G.px,
       sf = G.speed;
@@ -1210,6 +1211,115 @@ function start() {
     composer.render();
   }
 
-  window.view3d = { ready: true, frame };
+  /* ---------- Garage showroom: a studio with the car on a turntable ---------- */
+  const studio = new THREE.Scene(),
+    scam = new THREE.PerspectiveCamera(34, innerWidth / innerHeight, 0.3, 200);
+  studio.background = new THREE.Color('#120f24');
+  studio.fog = new THREE.Fog('#120f24', 14, 34);
+  studio.environment = scene.environment;
+  const scomp = new EffectComposer(renderer);
+  scomp.addPass(new RenderPass(studio, scam));
+  scomp.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.5, 0.9));
+  scomp.addPass(new OutputPass());
+  addEventListener('resize', () => scomp.setSize(innerWidth, innerHeight));
+  {
+    const floor = new THREE.Mesh(
+      new THREE.CircleGeometry(40, 64),
+      new THREE.MeshStandardMaterial({ color: '#1d1a33', roughness: 0.3, metalness: 0.5 }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    studio.add(floor);
+    const key = new THREE.SpotLight(0xffffff, 4, 40, 0.55, 0.6, 0);
+    key.position.set(4, 12, 6);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.bias = -0.0004;
+    const rimA = new THREE.PointLight('#ff7a3d', 2.2, 30, 0),
+      rimB = new THREE.PointLight('#2fc9bd', 2.2, 30, 0);
+    rimA.position.set(-7, 3, -5);
+    rimB.position.set(7, 3, -5);
+    studio.add(key, key.target, rimA, rimB, new THREE.HemisphereLight('#9a8cff', '#1a1530', 0.6));
+  }
+  const table = new THREE.Group();
+  {
+    const disc = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.6, 4.8, 0.14, 64),
+      new THREE.MeshStandardMaterial({ color: '#25213f', roughness: 0.25, metalness: 0.7 }),
+    );
+    disc.position.y = 0.07;
+    disc.receiveShadow = true;
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(4.7, 0.03, 8, 96),
+      new THREE.MeshStandardMaterial({ color: '#ff7a3d', emissive: '#ff7a3d', emissiveIntensity: 2 }),
+    );
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.15;
+    table.add(disc, ring);
+  }
+  studio.add(table);
+  let showCar = null,
+    showKey = '',
+    spinA = 0.6,
+    spinV = 0,
+    drag = null;
+  /* drag anywhere on the garage background to spin the car */
+  addEventListener('pointerdown', e => {
+    if (!active() || e.target.closest('button,input,a,.sc,.card,.chips,.sws')) return;
+    drag = { x: e.clientX, id: e.pointerId };
+  });
+  addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    drag.x = e.clientX;
+    spinA += dx * 0.01;
+    spinV = dx * 0.6;
+  });
+  addEventListener('pointerup', () => (drag = null));
+  addEventListener('pointercancel', () => (drag = null));
+  const ovEl = document.getElementById('ov');
+  const active = () => !!(window.view3d.showroom && !ovEl.hidden);
+  function showroom(dt) {
+    const sr = window.view3d.showroom,
+      key = sr.body + sr.col;
+    if (key !== showKey) {
+      if (showCar) {
+        table.remove(showCar);
+        disposeTree(showCar);
+      }
+      showCar = makeCar(sr.body, sr.col);
+      showCar.position.y = 0.14;
+      table.add(showCar);
+      showKey = key;
+    }
+    if (!drag) {
+      spinV *= Math.pow(0.05, dt);
+      spinA += dt * (0.35 + spinV);
+    }
+    table.rotation.y = spinA;
+    // frame the car in the free side of the screen: the right half on wide screens, the top on narrow ones
+    const wide = innerWidth > 900;
+    scam.aspect = innerWidth / innerHeight;
+    if (wide)
+      scam.setViewOffset(
+        innerWidth,
+        innerHeight,
+        -innerWidth * 0.26,
+        -innerHeight * 0.04,
+        innerWidth,
+        innerHeight,
+      );
+    else scam.setViewOffset(innerWidth, innerHeight, 0, innerHeight * 0.22, innerWidth, innerHeight);
+    // far enough back that the whole car fits the screen width (portrait phones need more room)
+    const d = wide ? 19 : Math.max(17, 4.1 / (Math.tan((17 * Math.PI) / 180) * scam.aspect));
+    studio.fog.near = d - 3;
+    studio.fog.far = d + 22;
+    scam.position.set(0, 3.4, d);
+    scam.lookAt(0, 0.9, 0);
+    scam.updateProjectionMatrix();
+    scomp.render();
+  }
+
+  window.view3d = { ready: true, frame, showroom: null };
   document.body.classList.add('gl');
 }

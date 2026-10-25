@@ -2017,6 +2017,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     showMenu();
   }
   function ovSet(h) {
+    if (window.view3d) window.view3d.showroom = null;
     ov.innerHTML = h;
     ov.hidden = false;
     ov.scrollTop = 0;
@@ -2240,7 +2241,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     reloadStore();
     const C = CARS[me.body] || CARS.coupe;
     ovSet(
-      '<h1 class="sm">Garage</h1><p>' +
+      '<div class="stage" id="stage"></div><h1 class="sm">Garage</h1><p>' +
         me.points +
         ' pts to spend</p>' +
         '<div class="sec">Your car</div><div class="chips" role="radiogroup" aria-label="Car shape">' +
@@ -2286,6 +2287,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           return (
             '<div class="sc' +
             (me.body === id ? ' on' : '') +
+            '" data-a="pv" data-v="' +
+            id +
             '"><canvas class="pv" width="320" height="170" data-b="' +
             id +
             '"></canvas><b>' +
@@ -2340,6 +2343,19 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<button class="btn alt" data-a="menu">Back</button>',
     );
     ov.querySelectorAll('canvas.pv').forEach(c => preview(c, c.dataset.b, me.color));
+    showroom3d();
+  }
+  /* the 3D studio shows the car being previewed (a showroom card) or the one you drive */
+  let pvBody = null;
+  function showroom3d() {
+    const b = pvBody || me.body,
+      sup = SUPER.find(x => x[0] === b),
+      name = sup ? sup[1] : (BODIES.find(x => x[0] === b) || [, 'Car'])[1],
+      st = b === me.body ? 'Driving' : owns(me, b) ? 'Owned' : sup[2] + ' pts';
+    ov.querySelectorAll('.sc').forEach(c => c.classList.toggle('pvon', c.dataset.v === b));
+    const tag = $('stage');
+    if (tag) tag.innerHTML = '<b>' + name + '</b><small>' + st + ' · drag to spin</small>';
+    if (window.view3d && window.view3d.ready) window.view3d.showroom = { body: b, col: me.color };
   }
   /* draw a car into a small canvas for the showroom */
   function preview(c, body, col) {
@@ -2521,9 +2537,18 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ov.querySelectorAll('[data-a=body]').forEach(s => s.classList.toggle('on', s.dataset.v === v));
       const cd = $('cdesc');
       if (cd) cd.textContent = CARS[v].d;
-    } else if (a === 'buycar') buyCar(v);
-    else if (a === 'gbody') {
+    } else if (a === 'pv') {
+      pvBody = v;
+      showroom3d();
+      // on phones the turntable sits above the list: bring it into view
+      if (innerWidth <= 900 && window.view3d && window.view3d.ready)
+        ov.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (a === 'buycar') {
+      pvBody = null;
+      buyCar(v);
+    } else if (a === 'gbody') {
       if (!owns(me, v)) return;
+      pvBody = null;
       me.body = v;
       save();
       applyUp();

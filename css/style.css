@@ -1047,3 +1047,70 @@ kbd {
 body.gl {
   background: transparent;
 }
+/* 3D showroom: caption for the car on the turntable; the flat previews are only used without WebGL */
+.stage {
+  display: none;
+}
+body.gl .stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  position: fixed;
+  right: 5vw;
+  bottom: 6vh;
+  pointer-events: none;
+  text-align: right;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+}
+body.gl .stage b {
+  font-size: clamp(40px, 6vw, 76px);
+  font-weight: 900;
+  line-height: 0.9;
+}
+body.gl .stage small {
+  font-size: clamp(17px, 2vw, 22px);
+  font-weight: 700;
+  opacity: 0.85;
+  color: var(--glow);
+}
+body.gl .sc canvas {
+  display: none;
+}
+.sc {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.sc:hover {
+  transform: translateY(-2px);
+}
+.sc.pvon {
+  outline: 2px solid #6ff0e4;
+  outline-offset: 2px;
+}
+@media (max-width: 900px) {
+  body.gl .stage {
+    position: static;
+    order: -1;
+    height: 36vh;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: center;
+    align-self: stretch;
+    margin-top: 0 !important;
+    flex: none;
+  }
+  body.gl .stage b {
+    font-size: clamp(32px, 9vw, 48px);
+  }
+}
+@media (min-width: 901px) {
+  body.gl #ov:has(.stage) > :not(.stage) {
+    max-width: min(600px, 46vw);
+  }
+  body.gl .show {
+    grid-template-columns: 1fr 1fr;
+  }
+  body.gl #ov:has(.stage) {
+    background: linear-gradient(90deg, rgba(19, 17, 58, 0.92), rgba(19, 17, 58, 0.6) 45%, transparent 62%);
+  }
+}
