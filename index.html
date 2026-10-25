@@ -92,7 +92,10 @@ h1{font-size:clamp(58px,13vw,150px);line-height:.86}h2{font-size:clamp(56px,12vw
 .sw{width:44px;height:44px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
 .sw.on{border-color:var(--ink);box-shadow:0 0 0 2px var(--night),0 0 18px var(--hot)}
 #nm{font:inherit;font-weight:700;font-size:clamp(24px,3.4vw,34px);padding:6px 14px 4px;background:rgba(27,26,58,.8);color:var(--ink);border:2px solid rgba(255,244,224,.5);border-radius:4px;width:min(360px,100%);-webkit-user-select:text;user-select:text}
-#nm:focus{outline:none;border-color:var(--hot)}
+#nm:focus,.fld:focus{outline:none;border-color:var(--hot)}
+.fld{font:inherit;font-weight:700;font-size:clamp(20px,2.8vw,28px);padding:6px 14px 4px;background:rgba(27,26,58,.8);color:var(--ink);border:2px solid rgba(255,244,224,.5);border-radius:10px;width:min(420px,100%);-webkit-user-select:text;user-select:text}
+#ov .hint.err{color:#ff8a7a;opacity:1}
+.row .lnk{font-size:clamp(18px,2.2vw,22px)}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;width:min(560px,100%)}
 .card{background:rgba(27,26,58,.78);border:1px solid rgba(255,244,224,.25);border-radius:4px;padding:10px 14px 12px;display:flex;flex-direction:column;gap:4px}
 .card b{font-size:clamp(24px,3.4vw,30px);font-weight:900;line-height:1}
@@ -135,6 +138,23 @@ body.joy #tc .lr{display:none}body.joy #joy{display:block}
 body.joy #nit{bottom:calc(176px + env(safe-area-inset-bottom,0px))}
 @media (prefers-reduced-motion:reduce){.cf{animation-duration:.01s}}
 </style>
+<script type="module">
+/* online saves: Firebase email/password sign-in, each player's drivers stored in Firestore at players/{uid} */
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendPasswordResetEmail,signOut}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import{getFirestore,doc,getDoc,setDoc,serverTimestamp}from'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+const app=initializeApp({apiKey:"AIzaSyC9mWD69-RudmDIWEp06ul5ZrJMasAF5Rs",authDomain:"turbo-racing-3976f.firebaseapp.com",databaseURL:"https://turbo-racing-3976f-default-rtdb.firebaseio.com",projectId:"turbo-racing-3976f",storageBucket:"turbo-racing-3976f.firebasestorage.app",messagingSenderId:"349429996868",appId:"1:349429996868:web:9cb6067bfc8fbba3bd4b11",measurementId:"G-WRWJPDEPME"});
+const auth=getAuth(app),db=getFirestore(app);
+window.cloud={
+ user:()=>auth.currentUser,
+ signIn:(e,p)=>signInWithEmailAndPassword(auth,e,p),
+ signUp:(e,p)=>createUserWithEmailAndPassword(auth,e,p),
+ reset:e=>sendPasswordResetEmail(auth,e),
+ signOut:()=>signOut(auth),
+ load:async()=>{const u=auth.currentUser;if(!u)return null;const d=await getDoc(doc(db,'players',u.uid));return d.exists()?d.data():null},
+ save:async data=>{const u=auth.currentUser;if(!u)return;await setDoc(doc(db,'players',u.uid),{...data,email:u.email,updated:serverTimestamp()})}};
+onAuthStateChanged(auth,u=>dispatchEvent(new CustomEvent('cloudauth',{detail:u})));
+</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -183,7 +203,35 @@ let me=profiles[curKey]||null;
 function reloadStore(){const p=LS('ghatrun-profiles',null);if(p)for(const k in p){if(profiles[k])Object.assign(profiles[k],p[k]);else profiles[k]=p[k]}
  const l=LS('ghatrun-league',null);if(l&&l.bots)league=l;if(curKey&&profiles[curKey])me=profiles[curKey]}
 addEventListener('storage',e=>{if(e.key==='ghatrun-profiles'||e.key==='ghatrun-league'){reloadStore();if(typeof ov!=='undefined'&&!ov.hidden&&document.querySelector('#ov [data-a=buy]'))showGarage()}});
-const save=()=>{SS('ghatrun-profiles',profiles);SS('ghatrun-league',league);SS('ghatrun-user',curKey);SS('ghatrun-diff',diffSel);SS('ghatrun-music',musicOn);SS('ghatrun-ctl',ctl);SS('ghatrun-sens',sensSel);SS('ghatrun-riv',rivSel);SS('ghatrun-laps',lapsSel);SS('ghatrun-map',mapSel)};
+const save=()=>{SS('ghatrun-profiles',profiles);SS('ghatrun-league',league);SS('ghatrun-user',curKey);SS('ghatrun-diff',diffSel);SS('ghatrun-music',musicOn);SS('ghatrun-ctl',ctl);SS('ghatrun-sens',sensSel);SS('ghatrun-riv',rivSel);SS('ghatrun-laps',lapsSel);SS('ghatrun-map',mapSel);cloudPush()};
+/* ---------- online account: same drivers on any browser or device ---------- */
+let cUser=null,cTimer=0,cMsg='';
+function cloudPush(){if(!cUser||!window.cloud)return;clearTimeout(cTimer);cTimer=setTimeout(()=>{window.cloud.save({profiles,curKey}).catch(e=>console.warn('cloud save failed',e))},1200)}
+/* keep whichever copy of each driver has done more (more races, then more points) */
+const better=(a,b)=>!a?b:!b?a:((b.races||0)>(a.races||0)||((b.races||0)===(a.races||0)&&(b.careerPts||0)>(a.careerPts||0)))?b:a;
+async function cloudPull(){try{const d=await window.cloud.load();
+  if(d&&d.profiles)for(const k in d.profiles)profiles[k]=better(profiles[k],d.profiles[k]);
+  if(d&&d.curKey&&profiles[d.curKey])curKey=d.curKey;
+  me=profiles[curKey]||null;if(me){roll(me);applyUp()}save();
+  if(typeof state!=='undefined'&&state==='menu')showMenu()}
+ catch(e){cMsg='Could not load your online save ('+(e.code||e.message)+')';console.warn(e)}}
+addEventListener('cloudauth',e=>{const was=cUser;cUser=e.detail;if(cUser&&(!was||was.uid!==cUser.uid))cloudPull();else if(typeof state!=='undefined'&&state==='menu'&&!ov.hidden&&document.querySelector('#ov [data-a=cloud],#ov #cem,#ov [data-a=cout]'))showMenu()});
+const AUTHERR={'auth/invalid-credential':'Wrong email or password','auth/wrong-password':'Wrong email or password','auth/user-not-found':'No account with that email','auth/email-already-in-use':'That email already has an account. Sign in instead','auth/weak-password':'Password needs at least 6 characters','auth/invalid-email':'That email address looks wrong','auth/too-many-requests':'Too many tries. Wait a minute and try again','auth/network-request-failed':'No internet connection'};
+async function cloudGo(how){const em=$('cem'),pw=$('cpw');if(!window.cloud){cMsg='Online saves are still loading. Try again in a moment';return showCloud()}
+ const e=(em&&em.value.trim())||'',p=(pw&&pw.value)||'';if(!e){em&&em.focus();return}
+ try{if(how==='reset'){await window.cloud.reset(e);cMsg='Password reset email sent to '+e;return showCloud(e)}
+  if(!p){pw.focus();return}cMsg='';await(how==='up'?window.cloud.signUp(e,p):window.cloud.signIn(e,p))}
+ catch(x){cMsg=AUTHERR[x.code]||x.message;showCloud(e)}}
+function showCloud(em){
+ if(cUser)return ovSet('<h1 class="sm">Online save</h1><p>Signed in as <b>'+esc(cUser.email)+'</b>.</p><span class="hint">Your drivers, points and upgrades are saved online. Sign in with this email on any browser or device to carry on.</span>'+(cMsg?'<span class="hint err">'+esc(cMsg)+'</span>':'')+
+  '<div class="row"><button class="btn alt" data-a="cout">Sign out</button><button class="btn alt" data-a="menu">Back</button></div>');
+ ovSet('<h1 class="sm">Online save</h1><span class="hint">Sign in to keep your drivers and points on any browser or device. Without an account they are only saved in this browser.</span>'+
+  '<input id="cem" class="fld" type="email" placeholder="Email" autocomplete="email" aria-label="Email" value="'+esc(em||'')+'">'+
+  '<input id="cpw" class="fld" type="password" placeholder="Password (6+ characters)" autocomplete="current-password" aria-label="Password">'+
+  (cMsg?'<span class="hint err" role="alert">'+esc(cMsg)+'</span>':'')+
+  '<div class="row"><button class="btn" data-a="cin">Sign in</button><button class="btn alt" data-a="cup">Create account</button></div>'+
+  '<div class="row"><button class="lnk" data-a="creset">Forgot password?</button><button class="lnk" data-a="'+(me?'menu':'switch')+'">Back</button></div>');
+ cMsg='';const f=$('cem');if(f&&!em)f.focus()}
 const COLS=['#19d3c5','#ff4d4d','#4d94ff','#4dff88','#ffe14d','#a371f7'];
 const RIV=[{id:'b0',name:'Speedy',col:'#4d94ff',off:-.03},{id:'b1',name:'Turbo',col:'#4dff88',off:0},{id:'b2',name:'Nitro',col:'#ffe14d',off:.03},{id:'b3',name:'Blaze',col:'#ff7a3d',off:.05},{id:'b4',name:'Ghost',col:'#c99fff',off:.01}];
 const TIERS=[{id:'rookie',label:'Rookie',icon:'🏁',min:0,c:'#a0a0b0'},{id:'bronze',label:'Bronze',icon:'🥉',min:100,c:'#e88a45'},{id:'silver',label:'Silver',icon:'🥈',min:300,c:'#c8d0e0'},{id:'gold',label:'Gold',icon:'🥇',min:700,c:'#ffd966'},{id:'champion',label:'Champion',icon:'👑',min:1500,c:'#c99fff'}];
@@ -354,7 +402,7 @@ spawn(false);
 /* ---------- input ---------- */
 const KM={ArrowLeft:'L',KeyA:'L',ArrowRight:'R',KeyD:'R',ArrowUp:'G',KeyW:'G',ArrowDown:'B',KeyS:'B',Space:'N',ShiftLeft:'N',ShiftRight:'N',KeyZ:'D',KeyC:'D'};
 addEventListener('keydown',e=>{
- if(e.target&&e.target.tagName==='INPUT'){if(e.code==='Enter')createDriver();return}
+ if(e.target&&e.target.tagName==='INPUT'){if(e.code==='Enter'){if(e.target.id==='nm')createDriver();else if(e.target.id==='cpw')cloudGo('in')}return}
  const k=KM[e.code];if(k){inp[k]=1;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault()}
  if(e.code==='KeyM'){muted=!muted;muLbl()}
  if(e.code==='Escape'&&(state==='race'||state==='count'||state==='done'))showMenu()});
@@ -500,7 +548,7 @@ function ovSet(h){ov.innerHTML=h;ov.hidden=false;ov.scrollTop=0}
 function showMenu(){if(state==='done'&&(pFin||wreck)&&me)settle();else reloadStore();wreck=false;tour=null;chal=null;loginOpen=false;runId++;state='menu';spawn(false);document.body.classList.remove('play');
  if(!me)return showLogin();
  const t=tierOf(me.careerPts);
- ovSet('<h1>Worldwide<br>Wheels</h1><div class="who"><span class="tier" style="--c:'+t.c+'">'+t.icon+' '+t.label+'</span><b>'+esc(me.name)+'</b><span class="pt">'+me.points+' pts</span><button class="lnk" data-a="switch">Switch driver</button></div>'+
+ ovSet('<h1>Worldwide<br>Wheels</h1><div class="who"><span class="tier" style="--c:'+t.c+'">'+t.icon+' '+t.label+'</span><b>'+esc(me.name)+'</b><span class="pt">'+me.points+' pts</span><button class="lnk" data-a="switch">Switch driver</button><button class="lnk" data-a="cloud">'+(cUser?'☁ '+esc(cUser.email):'☁ Sign in to save online')+'</button></div>'+
   '<div class="chips" role="radiogroup" aria-label="Country">Country '+COUNTRIES.map(c=>'<button class="chip cc'+(c.id===MAPS[mapSel].c?' on':'')+'" data-a="country" data-v="'+c.id+'">'+flag(c.id)+c.name+'</button>').join('')+'</div>'+
   '<div class="maps" role="radiogroup" aria-label="Map">'+Object.keys(MAPS).filter(k=>MAPS[k].c===MAPS[mapSel].c).map(k=>{const T=THEMES[k];return '<button class="mc'+(k===mapSel?' on':'')+'" role="radio" aria-checked="'+(k===mapSel)+'" data-a="map" data-v="'+k+'" style="--s1:'+T.sky[1]+';--s2:'+T.sky[2]+';--s3:'+T.road[0]+'"><b>'+MAPS[k].name+'</b><small>'+MAPS[k].desc+'</small><span class="df" aria-label="Difficulty '+MAPS[k].dif+' of 3">'+'<i class="f"></i>'.repeat(MAPS[k].dif)+'<i></i>'.repeat(3-MAPS[k].dif)+'</span></button>'}).join('')+'</div>'+
   '<div class="menu">'+
@@ -525,7 +573,7 @@ function showLogin(sw){
   '<div class="sws" role="radiogroup" aria-label="Car colour">'+COLS.map(c=>'<button class="sw'+(c===selCol?' on':'')+'" data-a="col" data-v="'+c+'" style="background:'+c+'" aria-label="Car colour '+c+'"></button>').join('')+'</div>'+
   '<div class="chips" role="radiogroup" aria-label="Car shape">'+BODIES.map(b=>'<button class="chip'+(b[0]===selBody?' on':'')+'" data-a="body" data-v="'+b[0]+'">'+b[1]+'</button>').join('')+'</div>'+
   '<span class="hint" id="cdesc">'+CARS[selBody].d+'</span>'+
-  '<div class="row"><button class="btn" data-a="create">Start career</button>'+(me&&sw?'<button class="btn alt" data-a="menu">Back</button>':'')+'</div>')}
+  '<div class="row"><button class="btn" data-a="create">Start career</button>'+(me&&sw?'<button class="btn alt" data-a="menu">Back</button>':'')+'</div>'+'<button class="lnk" data-a="cloud">'+(cUser?'☁ Signed in as '+esc(cUser.email):'☁ Already have an account? Sign in')+'</button>')}
 function createDriver(){const el=$('nm');if(!el)return;const name=el.value.trim();if(!name){el.focus();return}
  const k=name.toLowerCase();if(!profiles[k])profiles[k]=newProfile(name,selCol,selBody);else{profiles[k].color=selCol;profiles[k].body=selBody}signIn(k)}
 function showGarage(){reloadStore();
@@ -554,7 +602,7 @@ function showLeague(){reloadStore();roll(me);ensureBots();
 ov.addEventListener('click',e=>{audio();const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
  if(a==='bots'||a==='tt')begin(a);else if(a==='again')begin(mode);
  else if(a==='garage')showGarage();else if(a==='league')showLeague();else if(a==='menu')showMenu();
- else if(a==='buy')buy(v);else if(a==='switch')showLogin(true);else if(a==='pick')signIn(v);else if(a==='create')createDriver();
+ else if(a==='buy')buy(v);else if(a==='switch')showLogin(true);else if(a==='pick')signIn(v);else if(a==='create')createDriver();else if(a==='cloud')showCloud();else if(a==='cin')cloudGo('in');else if(a==='cup')cloudGo('up');else if(a==='creset')cloudGo('reset');else if(a==='cout'){if(window.cloud)window.cloud.signOut();cUser=null;showMenu()}
  else if(a==='col'){selCol=v;ov.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',s.dataset.v===v))}
  else if(a==='body'){selBody=v;ov.querySelectorAll('[data-a=body]').forEach(s=>s.classList.toggle('on',s.dataset.v===v));const cd=$('cdesc');if(cd)cd.textContent=CARS[v].d}
  else if(a==='gbody'){me.body=v;save();applyUp();showGarage()}
