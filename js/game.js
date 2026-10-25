@@ -839,6 +839,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
 
   /* ---------- track ---------- */
   let N = 0,
+    trackVer = 0,
     TL = 0,
     cpPos = [];
   const CPF = [0.25, 0.5, 0.75],
@@ -932,6 +933,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     mapSel = MAPS[id] ? id : 'in-ghat';
     TH = THEMES[mapSel];
     buildTrack(MAPS[mapSel].lay);
+    trackVer++;
   }
   loadMap(mapSel);
 
@@ -4059,6 +4061,13 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ctx.stroke();
   }
   function render() {
+    /* 3D: the WebGL view draws the world; this canvas only carries the overlay effects */
+    if (window.view3d && window.view3d.ready) {
+      ctx.clearRect(0, 0, W, H);
+      window.view3d.frame();
+      overlayFx(false);
+      return;
+    }
     ctx.save();
     if (shake > 0.1) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     sky();
@@ -4155,6 +4164,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       loginOpen || !me ? selBody : me.body,
     );
     ctx.restore();
+    overlayFx(true);
+  }
+  /* sparks, smoke, boost glow, rain, vignette and the countdown, drawn over either renderer */
+  function overlayFx(flat) {
     if (sparks.length) {
       for (const s of sparks) {
         ctx.globalAlpha = (1 - s.t / s.l) * (s.col ? 0.7 : 1);
@@ -4193,7 +4206,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
       ctx.stroke();
     }
-    flare();
+    if (flat) flare();
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, W, H);
     if (state === 'count' || goT > 0) {
@@ -4222,6 +4235,70 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   }
   showMenu();
   requestAnimationFrame(loop);
+  /* read-only view of the game for the 3D renderer (js/view3d.js) */
+  window.__game = {
+    SL,
+    RW,
+    PZ,
+    CH,
+    get N() {
+      return N;
+    },
+    get TL() {
+      return TL;
+    },
+    get trackVer() {
+      return trackVer;
+    },
+    get segs() {
+      return segs;
+    },
+    get TH() {
+      return TH;
+    },
+    get map() {
+      return mapSel;
+    },
+    get cars() {
+      return cars;
+    },
+    get pos() {
+      return pos;
+    },
+    get px() {
+      return px;
+    },
+    get speed() {
+      return speed / MAXS;
+    },
+    get steer() {
+      return steer;
+    },
+    get drift() {
+      return da;
+    },
+    get boost() {
+      return boost;
+    },
+    get shake() {
+      return shake;
+    },
+    get rain() {
+      return !!(TH.rain || wx);
+    },
+    get state() {
+      return state;
+    },
+    get t() {
+      return tg;
+    },
+    get player() {
+      return loginOpen || !me ? { col: selCol, body: selBody } : { col: me.color, body: me.body };
+    },
+    get reduce() {
+      return reduce;
+    },
+  };
   window.__ghat = {
     hurt,
     get dmg() {

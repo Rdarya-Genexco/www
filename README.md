@@ -8,7 +8,10 @@ An arcade street racer in the browser: India, Brazil, Mexico and Japan, rival bo
 index.html          page markup (HUD, touch controls, menu overlay)
 favicon.svg         tab icon
 css/style.css       all styles
-js/game.js          the game: tracks, physics, rivals, drawing, menus, saves
+js/game.js          the game: tracks, physics, rivals, menus, saves, and the 2D fallback renderer
+js/view3d.js        3D renderer (Three.js): builds the world from game.js's track each map and
+                    draws cars, scenery, lighting, shadows and bloom every frame
+js/vendor/three/    Three.js r160 (MIT) bundled locally, loaded through the import map in index.html
 js/cloud.js         online saves (Firebase email/password + Firestore)
 assets/music/       race playlist (played in order, then loops)
 ```
@@ -22,6 +25,10 @@ python3 -m http.server 8000
 ```
 
 then open http://localhost:8000. Opening `index.html` straight from disk runs the game, but online sign-in needs a real web address (localhost or a hosted site).
+
+## Rendering
+
+The game runs in 3D through WebGL. On devices without WebGL, `view3d.js` never starts and `game.js` keeps drawing the original 2D pseudo-3D road, so the game always works.
 
 ## Saves
 

@@ -20,6 +20,16 @@
     <link rel="stylesheet" href="css/style.css" />
     <!-- game.js first: it listens for the sign-in events that cloud.js sends -->
     <script src="js/game.js" defer></script>
+    <!-- 3D view: Three.js is bundled in js/vendor so the game doesn't depend on a CDN -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./js/vendor/three/three.module.min.js",
+          "three/addons/": "./js/vendor/three/addons/"
+        }
+      }
+    </script>
+    <script type="module" src="js/view3d.js"></script>
     <script type="module" src="js/cloud.js"></script>
   </head>
   <body>
