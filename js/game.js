@@ -1023,9 +1023,41 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     chk(pos + PZ, px, speed);
     return best;
   }
+  /* average bend between a and b segments ahead of z (positive = right-hander) */
+  function bendAhead(z, a, b) {
+    const i0 = Math.floor(z / SL);
+    let sum = 0;
+    for (let k = a; k < b; k++) sum += segs[(i0 + k) % N].c;
+    return sum / (b - a);
+  }
+  /* rival drivers: look ahead to brake before bends and follow a racing line (wide on entry, inside at the
+     apex, out on exit), slipstream and pass, dodge potholes, and now and then make a mistake */
   function rivalStep(c, dt) {
-    const seg = segs[Math.floor(c.z / SL) % N];
-    let tgt = state === 'count' ? 0 : c.top * (1 - Math.min(0.22, Math.abs(seg.c) * c.cu));
+    const seg = segs[Math.floor(c.z / SL) % N],
+      cNear = bendAhead(c.z, 0, 8),
+      cFar = bendAhead(c.z, 10, 40),
+      bend = Math.max(Math.abs(cNear), Math.abs(cFar) * 0.9);
+    let tgt = state === 'count' ? 0 : c.top * (1 - Math.min(0.26, bend * c.cu));
+    // mistakes: run wide, lock up under braking, or lift off; more often at lower rival pace
+    if (state === 'race' && !(c.mk > 0) && Math.random() < dt * (0.012 + 0.05 * (1 - diffSel))) {
+      c.mk = 0.8 + Math.random() * 0.8;
+      c.mkType = ['wide', 'lock', 'lift'][(Math.random() * 3) | 0];
+    }
+    if (c.mk > 0) {
+      c.mk -= dt;
+      if (c.mkType === 'lock') tgt *= 0.72;
+      else if (c.mkType === 'lift') tgt *= 0.88;
+    }
+    let line =
+      clamp((0.62 * cNear) / 3 - (Math.abs(cNear) < 0.6 ? (0.45 * cFar) / 3 : 0), -0.8, 0.8) + c.home * 0.25;
+    if (c.mk > 0 && c.mkType === 'wide') line = -Math.sign(cNear || cFar || 1) * 0.95;
+    // steer around potholes a few segments ahead
+    for (let k = 2; k < 7; k++) {
+      const ps = segs[(Math.floor(c.z / SL) + k) % N];
+      if (ps.ph)
+        for (const h of ps.ph)
+          if (Math.abs(line - h.o) < h.w + 0.15) line = h.o + (line > h.o ? 1 : -1) * (h.w + 0.2);
+    }
     /* Speedy brakes early for bends, Turbo carries speed through them, Nitro goes in short bursts */
     if (c.id === 'b2') {
       c.bt = (c.bt == null ? 6 : c.bt) - dt;
@@ -1043,9 +1075,15 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       const alts = [-0.7, 0, 0.7]
         .filter(l => Math.abs(l - c.o) > 0.3 && !ahead(c, l, SL * 9, SL * 0.7))
         .sort((a, b) => Math.abs(a - c.o) - Math.abs(b - c.o));
-      if (alts.length) c.tgtO = alts[0];
-      else tgt = Math.min(tgt, Math.max(ob.sp * 0.97, c.top * 0.3));
-    } else if (!ahead(c, c.home, SL * 9, SL * 0.7)) c.tgtO = c.home;
+      if (alts.length) {
+        c.tgtO = alts[0];
+        if (ob.dz < SL * 4) tgt *= 1.04; // pulling out of the slipstream
+      } else tgt = Math.min(tgt, Math.max(ob.sp * 0.97, c.top * 0.3));
+    } else {
+      if (ahead(c, c.o, SL * 14, 0)) tgt *= 1.03; // drafting someone further ahead
+      const ln = clamp(line, -0.85, 0.85);
+      if (!ahead(c, ln, SL * 9, SL * 0.7)) c.tgtO = ln;
+    }
     /* Turbo and Blaze slide into your lane to block when you are close behind; Nitro and Ghost lean into you when you are alongside. Only at 50% pace and above. */
     if (diffSel >= 0.5 && state === 'race' && !pFin && c.tr) {
       let dzp = c.z - (pos + PZ);
@@ -1056,6 +1094,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       else if (c.tr === 'swipe' && Math.abs(dzp) < SL * 1.2 && Math.abs(px - c.o) < 0.6)
         c.tgtO = clamp(px, -0.8, 0.8);
     }
+    c.brk = tgt < c.sp * 0.97; // brake lights
     if (c.sw > 0) c.sw -= dt;
     const ls = c.tr ? 0.95 : 0.7;
     c.o += clamp(c.tgtO - c.o, -dt * ls, dt * ls);
@@ -4409,6 +4448,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     },
     get slip() {
       return slip;
+    },
+    get braking() {
+      return state === 'race' && !!inp.B;
     },
     get boost() {
       return boost;
