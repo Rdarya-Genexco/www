@@ -496,6 +496,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       trees: ['palm', 'pine'],
       lamp: 2,
       rain: 1,
+      mist: 1, // thick monsoon fog
     }),
     'in-agra': mkT({
       sky: SKYS.agra,
@@ -3449,22 +3450,25 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       sy = H / 2 - H * TH.sy,
       r = H * 0.11 * TH.sr,
       gc = TH.sun[2];
-    const sg = ctx.createRadialGradient(sx, sy, r * 0.2, sx, sy, r * 2.6);
-    sg.addColorStop(0, 'rgba(' + gc + ',.55)');
-    sg.addColorStop(1, 'rgba(' + gc + ',0)');
-    ctx.fillStyle = sg;
-    ctx.fillRect(sx - r * 3, sy - r * 3, r * 6, r * 6);
-    const sd = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
-    sd.addColorStop(0, TH.sun[0]);
-    sd.addColorStop(1, TH.sun[1]);
-    ctx.fillStyle = sd;
-    ctx.beginPath();
-    ctx.arc(sx, sy, r, 0, 7);
-    ctx.fill();
+    // no sun through monsoon mist
+    if (!TH.mist) {
+      const sg = ctx.createRadialGradient(sx, sy, r * 0.2, sx, sy, r * 2.6);
+      sg.addColorStop(0, 'rgba(' + gc + ',.55)');
+      sg.addColorStop(1, 'rgba(' + gc + ',0)');
+      ctx.fillStyle = sg;
+      ctx.fillRect(sx - r * 3, sy - r * 3, r * 6, r * 6);
+      const sd = ctx.createRadialGradient(sx, sy, 0, sx, sy, r);
+      sd.addColorStop(0, TH.sun[0]);
+      sd.addColorStop(1, TH.sun[1]);
+      ctx.fillStyle = sd;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, 7);
+      ctx.fill();
+    }
     sunX = sx;
     sunY = sy;
     sunR = r;
-    if (!reduce) clouds();
+    if (!reduce && !TH.mist) clouds();
     mtn(off1 * 0.5, H * 0.14, TH.mtn[0], 0.006);
     if (TH.big) fuji();
     if (TH.lm === 'taj') taj();
@@ -3524,7 +3528,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         }
       }
     }
-    const f = Math.min(1, Math.pow(n / DRAW, 1.6));
+    // fog: thicker and closer on misty maps
+    const f = Math.min(1, Math.pow(n / (DRAW * (TH.mist ? 0.35 : 1)), TH.mist ? 1.2 : 1.6));
     ctx.globalAlpha = f;
     ctx.fillStyle = TH.fog;
     ctx.fillRect(0, b.sy, W, a.sy - b.sy + 1);
@@ -4378,7 +4383,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ctx.beginPath();
       ctx.rect(0, 0, W, s.cl);
       ctx.clip();
-      ctx.globalAlpha = 1 - Math.min(0.95, Math.pow(n / DRAW, 1.6));
+      ctx.globalAlpha = 1 - Math.min(0.97, Math.pow(n / (DRAW * (TH.mist ? 0.35 : 1)), TH.mist ? 1.2 : 1.6));
       const sc = s.p1.s,
         u = (sc * W) / 2;
       if (s.gate) gate(s);
