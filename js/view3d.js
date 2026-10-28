@@ -8,6 +8,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const G = window.__game;
 const clamp3 = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -53,6 +54,19 @@ function start() {
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.4, 0.45, 0.98);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
+  /* final colour grade, like a console racer: a touch more contrast and colour, cool shadows, warm highlights */
+  const GRADE = {
+    uniforms: { tDiffuse: { value: null }, contrast: { value: 1.07 }, saturation: { value: 1.12 } },
+    vertexShader:
+      'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader: `uniform sampler2D tDiffuse;uniform float contrast,saturation;varying vec2 vUv;
+      void main(){vec3 c=texture2D(tDiffuse,vUv).rgb;c=(c-.5)*contrast+.5;
+        float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,saturation);
+        c+=vec3(.018,.006,-.012)*smoothstep(.5,1.,l)+vec3(-.01,0.,.018)*(1.-smoothstep(0.,.45,l));
+        gl_FragColor=vec4(clamp(c,0.,1.),1.);}`,
+  };
+  const grade = new ShaderPass(GRADE);
+  composer.addPass(grade);
 
   addEventListener('resize', () => {
     renderer.setSize(innerWidth, innerHeight);
@@ -124,6 +138,8 @@ function start() {
   const M = {
     rubber: new THREE.MeshStandardMaterial({ color: 0x141218, roughness: 0.85 }),
     rim: new THREE.MeshStandardMaterial({ color: 0xb8bcc8, metalness: 1, roughness: 0.25 }),
+    disc: new THREE.MeshStandardMaterial({ color: 0x6b6b74, metalness: 0.85, roughness: 0.35 }),
+    sidewall: new THREE.MeshStandardMaterial({ color: 0x2a2830, roughness: 0.9 }),
     glass: new THREE.MeshPhysicalMaterial({
       color: 0x0b0a14,
       metalness: 0,
@@ -174,6 +190,9 @@ function start() {
           clearcoatRoughness: 0.18,
           envMap: live ? cubeRT.texture : null,
           envMapIntensity: live ? 1.1 : 1,
+          // fine metallic flake: tiny random bumps under the clear coat catch the light
+          normalMap: TEX.flake,
+          normalScale: new THREE.Vector2(0.06, 0.06),
         }),
       );
     return paintCache.get(key);
@@ -252,6 +271,16 @@ function start() {
     const hub = cyl(r * 0.16, r * 0.16, wdt * 1.1, M.rim, 10);
     hub.rotation.z = Math.PI / 2;
     g.add(hub);
+    // brake disc behind the spokes and a raised sidewall ring on both tyre faces
+    const disc = cyl(r * 0.58, r * 0.58, wdt * 0.5, M.disc, 24);
+    disc.rotation.z = Math.PI / 2;
+    g.add(disc);
+    for (const sx of [-1, 1]) {
+      const wall = new THREE.Mesh(new THREE.TorusGeometry(r * 0.83, r * 0.06, 6, 28), M.sidewall);
+      wall.rotation.y = Math.PI / 2;
+      wall.position.x = (sx * wdt) / 2;
+      g.add(wall);
+    }
     g.position.set(x, r, z);
     g.userData.spin = true;
     return g;
@@ -295,10 +324,10 @@ function start() {
     g.computeVertexNormals();
     return g;
   }
-  function makeCar(body, col, live = true) {
+  function makeCar(body, col, live = true, own = false) {
     const s = SPEC[body] || SPEC.coupe,
       g = new THREE.Group(),
-      pm = paint(col, live),
+      pm = own ? paint(col, live).clone() : paint(col, live), // own: the player's paint can scuff
       tail = M.tail.clone(), // own copy so its brake lights can brighten
       { L, W, r } = s,
       B = s.sup ? 0.14 : 0.12, // rounded edge size: the extrusion grows outward by this much
@@ -326,7 +355,8 @@ function start() {
     ];
     if (s.open) top.splice(4, 3, [s.rf, r + s.roof], [s.rr, r + s.deck + 0.12]);
     const so = { tumble: s.tumble, flare: s.flare, flareZ: L / 2 - 0.85 };
-    g.add(mesh(sculpt(top, W, B, waist, r + s.roof, so), pm));
+    const shell = mesh(sculpt(top, W, B, waist, r + s.roof, so), pm);
+    g.add(shell);
     // greenhouse glass: same lines, slightly proud of the pillars, roof stays painted
     if (!s.open) {
       // glass sits just outside the painted greenhouse; a painted roof panel goes back on top
@@ -557,6 +587,13 @@ function start() {
     shadow.position.y = 0.02;
     g.add(shadow);
     g.userData.tail = tail;
+    Object.assign(g.userData, {
+      shell,
+      paint: pm,
+      base: pm.color.clone(),
+      rough: pm.roughness,
+      size: [L, W, r, s.hood],
+    });
     g.scale.setScalar(CAR);
     return g;
   }
@@ -798,6 +835,42 @@ function start() {
         x.stroke();
       }
     }),
+    // asphalt roughness: patches that are smoother (polished by tyres) or rougher, so light catches unevenly
+    rough: canvasTex((x, n) => {
+      x.fillStyle = '#d0d0d0';
+      x.fillRect(0, 0, n, n);
+      for (let i = 0; i < 40; i++) {
+        const v = 170 + Math.random() * 85;
+        x.fillStyle = 'rgba(' + v + ',' + v + ',' + v + ',.12)';
+        x.beginPath();
+        x.ellipse(
+          Math.random() * n,
+          Math.random() * n,
+          6 + Math.random() * 18,
+          4 + Math.random() * 12,
+          Math.random() * 3,
+          0,
+          7,
+        );
+        x.fill();
+      }
+      for (let i = 0; i < 6000; i++) {
+        const v = 140 + Math.random() * 115;
+        x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+        x.fillRect(Math.random() * n, Math.random() * n, 1, 1);
+      }
+    }),
+    // paint flake normal map: random tiny tilts around "straight out" (128,128,255)
+    flake: canvasTex((x, n) => {
+      const img = x.createImageData(n, n);
+      for (let i = 0; i < n * n; i++) {
+        img.data[i * 4] = 128 + (Math.random() - 0.5) * 90;
+        img.data[i * 4 + 1] = 128 + (Math.random() - 0.5) * 90;
+        img.data[i * 4 + 2] = 255;
+        img.data[i * 4 + 3] = 255;
+      }
+      x.putImageData(img, 0, 0);
+    }, 128),
     // grass: mottled tones with short blade strokes
     grass: canvasTex((x, n) => {
       x.fillStyle = '#e4e4e4';
@@ -814,6 +887,9 @@ function start() {
       }
     }),
   };
+
+  // data textures (bumps, roughness) must not be colour-converted
+  TEX.flake.colorSpace = TEX.rough.colorSpace = THREE.NoColorSpace;
 
   /* ---------- world: built from the game's track whenever the map changes ---------- */
   let world = null,
@@ -915,12 +991,13 @@ function start() {
       g.computeVertexNormals();
       return g;
     }
-    const vmat = (rough, metal = 0, map = null) =>
+    const vmat = (rough, metal = 0, map = null, roughnessMap = null) =>
       new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: rough,
         metalness: metal,
         map,
+        roughnessMap,
         side: THREE.DoubleSide,
       });
     const add = (geo, mat, recv = true) => {
@@ -932,7 +1009,7 @@ function start() {
     const wet = TH.rain;
     add(
       ribbon(-1, 1, s => (s.i < 4 ? TH.road[0] : TH.road[s.k])),
-      vmat(wet ? 0.35 : 0.88, wet ? 0.3 : 0, TEX.asphalt),
+      vmat(wet ? 0.35 : 0.95, wet ? 0.3 : 0, TEX.asphalt, TEX.rough),
     );
     add(
       ribbon(-1.17, -1, s => (s.i < 4 ? '#fff4e0' : TH.rum[s.k]), 0.015),
@@ -1160,42 +1237,68 @@ function start() {
     /* roadside: trees, lamps, poles as instanced meshes */
     const parts = {};
     const put = (kind, list, mtx) => (parts[kind] = parts[kind] || { list, m: [] }).m.push(mtx);
+    /* roadside models: [geometry, material] parts per kind. Foliage uses rounder, more detailed clusters */
+    const leaf = (r, x, y, z, col, sy = 1) => [
+      new THREE.IcosahedronGeometry(r, 1).scale(1, sy, 1).translate(x, y, z),
+      flat(col),
+    ];
     const T = {
       pine: [
-        [new THREE.CylinderGeometry(0.25, 0.35, 2.4, 6).translate(0, 1.2, 0), flat(0x3a2a2e)],
-        [new THREE.ConeGeometry(2.6, 4, 7).translate(0, 4, 0), flat(0x1f4a3e)],
-        [new THREE.ConeGeometry(2.0, 3.4, 7).translate(0, 6, 0), flat(0x245544)],
-        [new THREE.ConeGeometry(1.4, 2.8, 7).translate(0, 7.8, 0), flat(0x2c6450)],
+        [new THREE.CylinderGeometry(0.22, 0.36, 3, 7).translate(0, 1.5, 0), flat(0x3a2a2e)],
+        ...[
+          [2.9, 3.2, 3.4, 0x1d4639],
+          [2.4, 3, 5.1, 0x22503f],
+          [1.95, 2.8, 6.6, 0x275a47],
+          [1.5, 2.5, 8, 0x2c644f],
+          [1.0, 2.2, 9.2, 0x316d56],
+        ].map(([rr, h, y, c]) => [new THREE.ConeGeometry(rr, h, 9).translate(0, y, 0), flat(c)]),
       ],
       palm: [
-        [new THREE.CylinderGeometry(0.18, 0.3, 7, 6).translate(0, 3.5, 0), flat(0x6b4a32)],
-        ...[0, 1, 2, 3, 4, 5].map(i => [
-          new THREE.BoxGeometry(0.5, 0.08, 3.2)
-            .translate(0, 0, 1.5)
-            .rotateX(0.45)
-            .rotateY((i / 6) * Math.PI * 2)
-            .translate(0, 7, 0),
+        [
+          new THREE.CylinderGeometry(0.16, 0.3, 7.4, 7)
+            .translate(0, 3.7, 0)
+            .applyMatrix4(new THREE.Matrix4().makeShear(0, 0, 0.06, 0, 0, 0)),
+          flat(0x6b4a32),
+        ],
+        ...Array.from({ length: 10 }, (_, i) => [
+          new THREE.BoxGeometry(0.55, 0.06, 3.4)
+            .translate(0, 0, 1.6)
+            .rotateX(0.35 + (i % 2) * 0.25)
+            .rotateY((i / 10) * Math.PI * 2)
+            .translate(0.44, 7.3, 0),
           flat(i % 2 ? 0x2f8a4a : 0x3fa05a),
         ]),
+        [new THREE.SphereGeometry(0.35, 8, 6).translate(0.44, 7.2, 0), flat(0x5a4a2a)],
       ],
       broad: [
-        [new THREE.CylinderGeometry(0.3, 0.4, 3.5, 6).translate(0, 1.75, 0), flat(0x4a3626)],
-        [new THREE.IcosahedronGeometry(2.6, 0).translate(0, 5, 0), flat(0x2a7f3f)],
-        [new THREE.IcosahedronGeometry(1.8, 0).translate(1.6, 4.2, 0.5), flat(0x1f6b34)],
-        [new THREE.IcosahedronGeometry(1.7, 0).translate(-1.5, 4.4, -0.4), flat(0x175a2b)],
+        [new THREE.CylinderGeometry(0.28, 0.42, 3.6, 7).translate(0, 1.8, 0), flat(0x4a3626)],
+        leaf(2.5, 0, 5.2, 0, 0x2a7f3f, 0.85),
+        leaf(1.9, 1.7, 4.4, 0.6, 0x237436),
+        leaf(1.8, -1.6, 4.6, -0.5, 0x1d6a30),
+        leaf(1.6, 0.4, 6.4, -0.9, 0x31894a),
+        leaf(1.5, -0.6, 4.2, 1.5, 0x22703a),
+        leaf(1.4, 0.9, 5.6, 1.4, 0x2b7f40),
       ],
       cactus: [
-        [new THREE.CylinderGeometry(0.4, 0.45, 5, 8).translate(0, 2.5, 0), flat(0x3f7a45)],
-        [new THREE.CylinderGeometry(0.28, 0.28, 1.8, 8).translate(-1.1, 3.2, 0), flat(0x3f7a45)],
-        [new THREE.CylinderGeometry(0.28, 0.28, 1.4, 8).translate(1.1, 3.6, 0), flat(0x3f7a45)],
-        [new THREE.BoxGeometry(1.2, 0.5, 0.5).translate(-0.6, 2.4, 0), flat(0x3f7a45)],
-        [new THREE.BoxGeometry(1.2, 0.5, 0.5).translate(0.6, 3.0, 0), flat(0x3f7a45)],
+        [new THREE.CylinderGeometry(0.4, 0.45, 5, 10).translate(0, 2.5, 0), flat(0x3f7a45)],
+        [new THREE.CapsuleGeometry(0.28, 1.4, 4, 10).translate(-1.1, 3.4, 0), flat(0x3f7a45)],
+        [new THREE.CapsuleGeometry(0.28, 1.0, 4, 10).translate(1.1, 3.8, 0), flat(0x3f7a45)],
+        [
+          new THREE.CapsuleGeometry(0.24, 0.9, 4, 10).rotateZ(Math.PI / 2).translate(-0.6, 2.4, 0),
+          flat(0x3f7a45),
+        ],
+        [
+          new THREE.CapsuleGeometry(0.24, 0.9, 4, 10).rotateZ(Math.PI / 2).translate(0.6, 3.0, 0),
+          flat(0x3f7a45),
+        ],
       ],
       sakura: [
-        [new THREE.CylinderGeometry(0.25, 0.35, 2.6, 6).translate(0, 1.3, 0), flat(0x4a3340)],
-        [new THREE.IcosahedronGeometry(2.4, 1).translate(0, 4.2, 0), flat(0xf7b6cf)],
-        [new THREE.IcosahedronGeometry(1.7, 1).translate(1.7, 3.6, 0.3), flat(0xf29bbd)],
-        [new THREE.IcosahedronGeometry(1.6, 1).translate(-1.6, 3.8, -0.3), flat(0xfbd0e0)],
+        [new THREE.CylinderGeometry(0.24, 0.36, 2.8, 7).translate(0, 1.4, 0), flat(0x4a3340)],
+        leaf(2.3, 0, 4.4, 0, 0xf7b6cf, 0.85),
+        leaf(1.7, 1.7, 3.8, 0.4, 0xf29bbd),
+        leaf(1.6, -1.6, 4.0, -0.4, 0xfbd0e0),
+        leaf(1.4, 0.3, 5.4, -0.8, 0xf6c2d6),
+        leaf(1.3, -0.5, 3.6, 1.4, 0xf3a8c6),
       ],
       lamp: [
         [new THREE.CylinderGeometry(0.1, 0.14, 8, 6).translate(0, 4, 0), M.black],
@@ -1444,6 +1547,106 @@ function start() {
     });
   }
 
+  /* ---------- ghost car: a see-through glowing copy of your best Time Trial lap ---------- */
+  function makeGhost(body, col) {
+    const g = makeCar(body, col, false);
+    const gm = new THREE.MeshStandardMaterial({
+      color: col,
+      emissive: col,
+      emissiveIntensity: 0.5,
+      transparent: true,
+      opacity: 0.32,
+      depthWrite: false,
+    });
+    g.traverse(o => {
+      if (o.isMesh) {
+        o.material = o.material === SHADOW ? o.material : gm;
+        o.castShadow = false;
+      }
+    });
+    return g;
+  }
+
+  /* ---------- visible damage on your car: dents, scuffed paint, smoke ---------- */
+  const SMOKE = new THREE.SpriteMaterial({
+    map: SHADOW.map,
+    color: 0x666670,
+    transparent: true,
+    depthWrite: false,
+    opacity: 0.6,
+  });
+  const smoke = [];
+  let lastDmg = 0,
+    smokeT = 0;
+  /* push the body in around a point: front for crashes, the side for wall hits */
+  function dent(car, amount) {
+    const u = car.userData,
+      geo = u.shell.geometry,
+      p = geo.attributes.position,
+      [L, W, r, hood] = u.size,
+      wallSide = Math.abs(G.px) > G.FENCE - 0.2 ? Math.sign(G.px) : 0,
+      cx = wallSide ? (wallSide * W) / 2 : (Math.random() - 0.5) * W * 0.7,
+      cz = wallSide ? (Math.random() - 0.5) * L * 0.7 : -L / 2,
+      cy = r + hood * (0.4 + Math.random() * 0.4),
+      R = 0.75,
+      depth = Math.min(0.22, 0.08 + amount * 1.2);
+    for (let i = 0; i < p.count; i++) {
+      const dx = p.getX(i) - cx,
+        dy = p.getY(i) - cy,
+        dz = p.getZ(i) - cz,
+        d = Math.hypot(dx, dy, dz);
+      if (d > R) continue;
+      const f = depth * (1 - d / R) ** 2,
+        // push toward the middle of the car
+        vx = -p.getX(i),
+        vz = -p.getZ(i),
+        vl = Math.hypot(vx, vz) || 1;
+      p.setXYZ(i, p.getX(i) + (vx / vl) * f, p.getY(i) - f * 0.3, p.getZ(i) + (vz / vl) * f);
+    }
+    p.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+  function damageLook(car, d, dt) {
+    const u = car.userData;
+    // scuffed, dulled paint as health drops
+    u.paint.color.copy(u.base).lerp(new THREE.Color(0x2a2724), d * 0.65);
+    u.paint.roughness = Math.min(0.95, u.rough + d * 0.45);
+    u.paint.clearcoat = 0.8 * (1 - d);
+    // smoke from the engine once badly damaged; black and with sparks near the end
+    if (d > 0.35 && !G.reduce) {
+      smokeT -= dt * (2 + d * 14);
+      if (smokeT <= 0) {
+        smokeT = 1;
+        const sp = smoke.find(s => !s.visible) || (smoke.length < 50 && new THREE.Sprite(SMOKE.clone()));
+        if (sp) {
+          if (!sp.parent) {
+            scene.add(sp);
+            smoke.push(sp);
+          }
+          // from the engine bay at the front of the hood (car-local metres; localToWorld applies the car's scale)
+          const [L, , r, hood] = u.size;
+          sp.position.copy(
+            car.localToWorld(new THREE.Vector3((Math.random() - 0.5) * 0.6, r + hood + 0.2, -L / 2 + 0.6)),
+          );
+          sp.userData = { t: 0, l: 1.2 + Math.random() * 0.6 };
+          sp.material.color.set(d > 0.7 ? 0x1c1a1e : 0x77777f);
+          sp.visible = true;
+        }
+      }
+    }
+    for (const sp of smoke) {
+      if (!sp.visible) continue;
+      const k = (sp.userData.t += dt) / sp.userData.l;
+      if (k >= 1) {
+        sp.visible = false;
+        continue;
+      }
+      sp.position.y += dt * 2.2;
+      sp.scale.setScalar(0.8 + k * 3.5);
+      sp.material.opacity = 0.65 * (1 - k);
+    }
+  }
+
   /* ---------- per-frame ---------- */
   const look = new THREE.Vector3();
   let lastT = performance.now();
@@ -1466,7 +1669,8 @@ function start() {
         scene.remove(player);
         disposeTree(player);
       }
-      player = makeCar(pl.body, pl.col);
+      player = makeCar(pl.body, pl.col, true, true);
+      lastDmg = 0;
       scene.add(player);
       playerKey = key;
     }
@@ -1480,6 +1684,12 @@ function start() {
     );
     spin(player, sf * dt * 60);
     player.userData.tail.emissiveIntensity = G.braking ? 4.5 : 1.4;
+    // damage: a fresh car when health resets, a dent for every hit
+    const dm = G.invincible ? 0 : G.dmg;
+    if (dm < lastDmg - 0.01) playerKey = '';
+    else if (dm > lastDmg + 0.005) dent(player, dm - lastDmg);
+    lastDmg = dm;
+    damageLook(player, dm, dt);
     // refresh the reflections every few frames (the player's own car is hidden from its reflection)
     if (!lowGfx() && ++cubeTick % 20 === 0) {
       player.visible = false;
@@ -1494,7 +1704,7 @@ function start() {
       seen.add(c);
       let m = meshes.get(c);
       if (!m) {
-        m = c.hz ? makeHazard(c.hz, c.col) : makeCar(c.body, c.col);
+        m = c.hz ? makeHazard(c.hz, c.col) : c.ghost ? makeGhost(c.body, c.col) : makeCar(c.body, c.col);
         if (c.rv) m.add(label(c.name));
         scene.add(m);
         meshes.set(c, m);
@@ -1502,7 +1712,7 @@ function start() {
       let dz = c.z - (pos + G.PZ);
       if (dz > G.TL / 2) dz -= G.TL;
       if (dz < -G.TL / 2) dz += G.TL;
-      m.visible = dz > -40 / FS && dz < 700 / FS;
+      m.visible = !c.hidden && dz > -40 / FS && dz < 700 / FS;
       if (!m.visible) continue;
       place(m, c.z, c.o, c.hz === 'cow' ? Math.cos(c.ph) * 1.3 : 0);
       if (c.hz === 'cow') walk(m, G.t * 3 + c.ph * 5);
@@ -1569,6 +1779,7 @@ function start() {
   scomp.addPass(new RenderPass(studio, scam));
   scomp.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.5, 0.9));
   scomp.addPass(new OutputPass());
+  scomp.addPass(new ShaderPass(GRADE));
   addEventListener('resize', () => scomp.setSize(innerWidth, innerHeight));
   {
     const floor = new THREE.Mesh(
@@ -1721,6 +1932,13 @@ function start() {
     frame,
     showroom: null,
     track: () => P,
+    debug: () =>
+      player && {
+        dmg: G.dmg,
+        last: lastDmg,
+        color: player.userData.paint.color.getHexString(),
+        smoke: smoke.filter(x => x.visible).length,
+      },
     setQuality(q) {
       quality = q;
       if (q !== 'auto') autoLow = false;

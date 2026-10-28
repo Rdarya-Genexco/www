@@ -1623,6 +1623,25 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     applyUp();
     state = 'count';
     spawn(m === 'bots', false);
+    ghostRec = [];
+    ghostRecT = 0;
+    ghost = m === 'tt' ? LS(ghostKey(), null) : null;
+    ghostCar = null;
+    if (ghost) {
+      ghostCar = {
+        ghost: 1,
+        z: PZ,
+        o: 0,
+        sp: 0,
+        s: 1,
+        body: me ? me.body : 'coupe',
+        col: me ? me.color : COLS[0],
+        pd: 0,
+        hidden: true,
+      };
+      segs[1].cars.push(ghostCar);
+      cars.push(ghostCar);
+    }
     cd = 3.2;
     goT = 0;
     syncSong();
@@ -1636,8 +1655,38 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         if (state === 'count') toast('Rain · less grip', 0, 'cp');
       }, 1400);
   }
+  /* ghost car (Time Trial): your best lap on each map is recorded (lap time, distance, lane every 0.1 s)
+     and replayed as a see-through car. Kept in this browser only */
+  let ghostRec = [],
+    ghostRecT = 0,
+    ghost = null,
+    ghostCar = null;
+  const ghostKey = () => 'ghatrun-ghost-' + mapSel;
+  function ghostAt(t) {
+    const S = ghost && ghost.s;
+    if (!S || t > ghost.t || t < 0) return null;
+    let lo = 0,
+      hi = S.length - 1;
+    while (hi - lo > 1) {
+      const m = (lo + hi) >> 1;
+      if (S[m][0] <= t) lo = m;
+      else hi = m;
+    }
+    const a = S[lo],
+      b = S[hi],
+      k = b[0] > a[0] ? clamp((t - a[0]) / (b[0] - a[0]), 0, 1) : 0;
+    return { pos: a[1] + (b[1] - a[1]) * k, px: a[2] + (b[2] - a[2]) * k };
+  }
   function lapDone() {
     const lt = time - lapStart;
+    if (mode === 'tt' && ghostRec.length > 10) {
+      if (!ghost || lt < ghost.t) {
+        ghost = { t: lt, s: ghostRec };
+        SS(ghostKey(), ghost);
+        toast('New ghost lap', 0, 'cp');
+      }
+      ghostRec = [];
+    }
     lapStart = time;
     laps.push(lt);
     cpNext = 0;
@@ -2131,6 +2180,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<section class="card"><b>Damage</b><small>Crashes and side swipes damage your car and cut its top speed. If it reaches 0% you are wrecked and lose the race.</small></section>' +
         '<section class="card"><b>Mumbai Mayhem</b><small>Dodge rickshaws, cyclists, bullock carts, wandering cows and potholes. Your car is invincible here, but every hit slows you down.</small></section>' +
         '<section class="card"><b>Points</b><small>1st 25 · 2nd 15 · 3rd 10 · 4th 5. Spend them on upgrades and supercars in the Garage showroom. The Daily Challenge gives 20 points once a day.</small></section>' +
+        '<section class="card"><b>Ghost car</b><small>In Time Trial your best lap on each map is recorded. Next time a see-through copy of your car drives it, so you can race yourself.</small></section>' +
         '<section class="card"><b>Online save</b><small>Sign in with email to keep your drivers, points, league and settings on any device.</small></section>' +
         '</div>' +
         '<div class="row"><button class="btn" data-a="menu">Let\'s race</button><button class="btn alt" data-a="settings">Settings</button></div>',
@@ -2928,6 +2978,21 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     }
     if (state === 'race') {
       time += dt;
+      if (mode === 'tt') {
+        ghostRecT -= dt;
+        if (ghostRecT <= 0) {
+          ghostRecT = 0.1;
+          ghostRec.push([+(time - lapStart).toFixed(2), Math.round(pos), +px.toFixed(3)]);
+        }
+        if (ghostCar) {
+          const gp = ghostAt(time - lapStart);
+          ghostCar.hidden = !gp;
+          if (gp) {
+            ghostCar.z = (gp.pos + PZ) % TL;
+            ghostCar.o = gp.px;
+          }
+        }
+      }
       if (cpNext < 3 && pos >= cpPos[cpNext] && pos < TL * 0.9) {
         cpNext++;
         toast('Checkpoint ' + cpNext + ' · ' + fmt(time - lapStart), 0, 'cp');
@@ -2965,6 +3030,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     for (const c of cars) {
       if (c.rv) {
         if (state === 'race' || state === 'count' || state === 'done') rivalStep(c, dt);
+      } else if (c.ghost) {
+        // placed by the ghost playback above
       } else {
         c.z = (c.z + dt * c.sp) % TL;
         if (c.hz === 'cow') {
@@ -2982,7 +3049,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       let dz = c.z - pp;
       if (dz > TL / 2) dz -= TL;
       if (dz < -TL / 2) dz += TL;
-      if (state === 'race') {
+      if (state === 'race' && !c.ghost) {
         const dxo = Math.abs(c.o - px);
         if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
           speed = Math.max(c.sp, MAXS * 0.16) * 0.5;
@@ -4321,6 +4388,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         else (TH.lamp === 2 ? pole : lamp)(X, s.p1.sy, u, o.o < 0 ? 1 : -1);
       }
       for (const c of s.cars) {
+        if (c.hidden) continue;
+        const ga = ctx.globalAlpha;
+        if (c.ghost) ctx.globalAlpha = ga * 0.4;
         const pc = (c.z % SL) / SL,
           k = lerp(s.p1.s, s.p2.s, pc),
           X = lerp(s.p1.sx, s.p2.sx, pc) + (k * c.o * RW * W) / 2,
@@ -4344,6 +4414,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
             ctx.shadowBlur = 0;
           }
         }
+        ctx.globalAlpha = ga;
       }
       ctx.restore();
     }
@@ -4492,6 +4563,12 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     },
     get slip() {
       return slip;
+    },
+    get dmg() {
+      return dmg;
+    },
+    get invincible() {
+      return inv();
     },
     get braking() {
       return state === 'race' && !!inp.B;
