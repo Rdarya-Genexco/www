@@ -994,7 +994,7 @@ function start() {
       roughness: 0.32,
       side: THREE.DoubleSide,
     });
-    for (const o of [-1.24, 1.24]) {
+    for (const o of [-G.FENCE, G.FENCE]) {
       const pos = [];
       for (let i = 0; i < N; i++) {
         const a = P[i],

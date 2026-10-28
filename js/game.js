@@ -826,6 +826,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   };
 
   /* ---------- track ---------- */
+  /* guardrails stand this many road half-widths from the centre; the car can't get past them */
+  const FENCE = 1.6;
   let N = 0,
     trackVer = 0,
     TL = 0,
@@ -843,7 +845,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     TL = N * SL;
     for (const s of segs) {
       if (TH.lamp && s.i % 14 === 0) {
-        s.sp.push({ t: 'L', o: -1.3 }, { t: 'L', o: 1.3 });
+        s.sp.push({ t: 'L', o: -1.85 }, { t: 'L', o: 1.85 });
       } else if (s.i % 4 === 2 && Math.random() < 0.6) {
         const d = Math.random() < 0.5 ? -1 : 1;
         s.sp.push({
@@ -1157,6 +1159,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
   const inp = { L: 0, R: 0, G: 0, B: 0, N: 0, X: 0, D: 0 };
   let lv = 0,
+    wallT = 0,
+    scrT = 0,
     slip = 0,
     dLock = false,
     wreck = false,
@@ -2780,6 +2784,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         }
       }
       if (goT > 0) goT -= dt;
+      wallT -= dt;
+      scrT -= dt;
       const bo = NT && nit > 1 && speed > MAXS * 0.2;
       boost = bo ? Math.min(1, boost + dt * 4) : Math.max(0, boost - dt * 4);
       const DR = !!D && sf > 0.4 && (Math.abs(steer) > 0.25 || Math.abs(seg.c) > 1.2);
@@ -2834,14 +2840,51 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         speed += ACC * UP.ac * 1.8 * dt;
         nit -= dt * 30;
       } else nit = Math.min(100, nit + dt * 2.5);
-      if (Math.abs(px) > 1.05 && speed > OFF) {
-        speed += OFFD * (1 - 0.25 * UP.gr) * dt;
-        shake = Math.max(shake, 3);
-        const pw = Math.min(W * 0.24, H * 0.42);
-        spark(W / 2 + (px > 0 ? 1 : -1) * pw * 0.42, H * 0.955, 2, 260);
+      // grass: bumpy, dusty and slow (speed is capped below)
+      const grass = Math.abs(px) > 1.17,
+        pw = Math.min(W * 0.24, H * 0.42),
+        side = Math.sign(px) || 1;
+      if (grass && speed > MAXS * 0.15) {
+        shake = Math.max(shake, 2.5);
+        if (!reduce && Math.random() < dt * 25)
+          sparks.push({
+            x: W / 2 + side * pw * 0.38,
+            y: H * 0.95,
+            vx: (Math.random() - 0.5) * 80,
+            vy: -50 - Math.random() * 50,
+            l: 0.7,
+            t: 0,
+            g: -30,
+            col: 'rgba(150,125,85,.55)',
+            sz: 10 + Math.random() * 8,
+          });
       }
-      px = clamp(px, -2.6, 2.6);
-      const lim = Math.min(CAP, MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg));
+      // the fence is solid: hitting it bounces you back with sparks, scraping along it scrubs speed
+      const wall = FENCE - 0.14;
+      if (Math.abs(px) > wall) {
+        px = side * wall;
+        if (lv * side > 0) {
+          if (Math.abs(lv) > 0.35 && !(wallT > 0)) {
+            wallT = 0.5;
+            speed *= 0.85;
+            hurt(0.04 * Math.min(1, Math.abs(lv)));
+            vib(90);
+            crashSnd(0.35);
+            shake = reduce ? 0 : 10;
+            toast('Wall', 1);
+            spark(W / 2 + side * pw * 0.45, H * 0.9, 26, 560);
+          }
+          lv = -lv * 0.35;
+        }
+        speed -= MAXS * 0.25 * dt;
+        spark(W / 2 + side * pw * 0.47, H * 0.9 - Math.random() * pw * 0.12, 4, 420);
+        if (!(scrT > 0)) {
+          scrT = 0.08;
+          blip(170 + Math.random() * 60, 0.06, 'sawtooth', 0.05);
+        }
+      }
+      let lim = Math.min(CAP, MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg));
+      if (grass) lim = Math.min(lim, MAXS * UP.ts * (0.45 + 0.06 * UP.gr));
       // above the limit (nitro ending, damage): ease back, faster than gas and nitro can push
       if (speed > lim) speed = Math.max(lim, speed - MAXS * 1.2 * dt);
       speed = clamp(speed, 0, CAP);
@@ -4410,6 +4453,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     RW,
     PZ,
     CH,
+    FENCE,
     get N() {
       return N;
     },
