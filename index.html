@@ -46,7 +46,27 @@
         <span>Best lap</span><b id="bst">–</b><span id="pts"></span>
         <div id="st" class="vs"></div>
       </div>
-      <div id="spd"><b id="kmh">0</b><span>km/h</span></div>
+      <div id="spd">
+        <!-- vector speedometer: 270 degree dial, arc fills toward 300 km/h, ticks added by game.js -->
+        <svg class="dial" viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <linearGradient id="dialGrad" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#6ff0e4" />
+              <stop offset="0.55" stop-color="#ffc15e" />
+              <stop offset="1" stop-color="#ff4d3d" />
+            </linearGradient>
+          </defs>
+          <circle class="face" cx="100" cy="100" r="96" />
+          <circle class="track" cx="100" cy="100" r="80" />
+          <circle id="spdArc" class="arc" cx="100" cy="100" r="80" />
+          <g id="ticks"></g>
+          <g id="needle">
+            <line x1="100" y1="100" x2="100" y2="34" />
+            <circle cx="100" cy="100" r="7" />
+          </g>
+        </svg>
+        <b id="kmh">0</b><span>km/h</span>
+      </div>
       <div id="nit">
         <span>Nitro <span id="nl">READY</span></span
         ><i><u id="nf"></u></i><span class="dmt">Car <span id="dl">100%</span></span

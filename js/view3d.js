@@ -1911,7 +1911,17 @@ function start() {
     measured = false;
   function applyQuality() {
     const low = lowGfx();
-    renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, coarse ? 1.25 : 1.75));
+    // High renders at the screen's full sharpness (up to 2x on Retina / high-DPI screens) with finer shadows
+    const hi = quality === 'high';
+    renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, hi ? 2 : coarse ? 1.25 : 1.75));
+    const sm = hi && !coarse ? 4096 : coarse ? 1024 : 2048;
+    if (sunLight.shadow.mapSize.x !== sm) {
+      sunLight.shadow.mapSize.set(sm, sm);
+      if (sunLight.shadow.map) {
+        sunLight.shadow.map.dispose();
+        sunLight.shadow.map = null;
+      }
+    }
     renderer.shadowMap.enabled = !low;
     sunLight.castShadow = !low;
     bloom.enabled = !low;

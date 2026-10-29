@@ -1540,6 +1540,43 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   muLbl();
 
   /* ---------- helpers ---------- */
+  /* speedometer dial: 270 degrees from 0 to MAX km/h; ticks every 20 km/h, labels every 60 */
+  const DIAL_LEN = 2 * Math.PI * 80 * 0.75;
+  {
+    const g = $('ticks'),
+      max = window.SPEED.max;
+    if (g)
+      for (let v = 0; v <= max; v += 20) {
+        const a = ((-225 + (v / max) * 270) * Math.PI) / 180,
+          big = v % 60 === 0,
+          r1 = big ? 64 : 68,
+          l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        l.setAttribute('x1', 100 + Math.cos(a) * r1);
+        l.setAttribute('y1', 100 + Math.sin(a) * r1);
+        l.setAttribute('x2', 100 + Math.cos(a) * 73);
+        l.setAttribute('y2', 100 + Math.sin(a) * 73);
+        l.setAttribute('class', big ? 'tk big' : 'tk');
+        g.appendChild(l);
+        if (big && v > 0 && v < max) {
+          const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          t.setAttribute('x', 100 + Math.cos(a) * 52);
+          t.setAttribute('y', 100 + Math.sin(a) * 52 + 4);
+          t.setAttribute('class', 'tl');
+          t.textContent = v;
+          g.appendChild(t);
+        }
+      }
+  }
+  let dialLast = -1;
+  function dial(kmh) {
+    if (kmh === dialLast) return;
+    dialLast = kmh;
+    const f = Math.min(1, kmh / window.SPEED.max),
+      arc = $('spdArc'),
+      nd = $('needle');
+    if (arc) arc.style.strokeDasharray = DIAL_LEN * f + ' 1000';
+    if (nd) nd.style.transform = 'rotate(' + (-135 + 270 * f) + 'deg)';
+  }
   const fmt = t => Math.floor(t / 60) + ':' + (t % 60).toFixed(2).padStart(5, '0');
   function toast(t, bad, cls) {
     const e = $('toast');
@@ -3111,10 +3148,12 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       if (toastT <= 0) $('toast').className = '';
     }
     snd();
-    $('kmh').textContent = Math.round((speed / MAXS) * KMH);
+    const kmhNow = Math.round((speed / MAXS) * KMH);
+    $('kmh').textContent = kmhNow;
+    dial(kmhNow);
     $('nf').style.width = clamp(nit, 0, 100) + '%';
     $('df').style.width = Math.round(100 - dmg * 100) + '%';
-    $('df').style.background = dmg > 0.65 ? '#ff5a5a' : dmg > 0.35 ? '#ffc15e' : '#6ff0e4';
+    $('df').style.setProperty('--hc', dmg > 0.65 ? '#ff5a5a' : dmg > 0.35 ? '#ffc15e' : '#6ff0e4');
     $('dl').textContent = inv() ? 'INVINCIBLE' : Math.round(100 - dmg * 100) + '%';
     $('nl').textContent = boost > 0.3 ? 'BOOST' : dLock ? 'DRIFT ON' : nit < 20 ? 'LOW' : 'READY';
     $('lap').textContent =
