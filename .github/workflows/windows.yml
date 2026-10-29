@@ -1,0 +1,62 @@
+# Builds the Windows desktop app (portable .exe and installer) on a Windows machine whenever the game
+# changes on main, and publishes both files to the "Windows build" release.
+name: Build Windows app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - favicon.svg
+      - css/**
+      - js/**
+      - assets/**
+      - desktop/**
+      - .github/workflows/windows.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Copy the game into the app
+        shell: bash
+        run: |
+          mkdir -p desktop/app
+          cp -r index.html favicon.svg css js assets desktop/app/
+          cp desktop/build/icon.png desktop/app/icon.png
+      - name: Build
+        working-directory: desktop
+        shell: bash
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WorldwideWheels-windows
+          path: desktop/dist/*.exe
+      - name: Publish to the Windows build release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-latest
+          name: Worldwide Wheels for Windows
+          body: |
+            Latest Windows build of Worldwide Wheels, made automatically from main.
+
+            - **WorldwideWheels-portable.exe**: no install, just double-click to play.
+            - **WorldwideWheels-Setup.exe**: installs the game with Start menu and desktop shortcuts.
+
+            Windows may show a SmartScreen warning because the app isn't code-signed: click "More info", then "Run anyway".
+          files: desktop/dist/*.exe
+          make_latest: true
