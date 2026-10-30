@@ -1362,22 +1362,32 @@ function start() {
     const R0 = rad + 700;
     [
       // in thick mist the mountains are only faint shapes
-      [TH.mtn[0], TH.mist ? 1.3 : 0.35, R0 + 500, 1.4, 34],
-      [TH.mtn[1], TH.mist ? 1.2 : 0.15, R0, 1, 44],
+      [TH.mtn[0], 0.35 + (TH.mist || 0) * 0.9, R0 + 500, 1.4, 34],
+      [TH.mtn[1], 0.15 + (TH.mist || 0) * 0.9, R0, 1, 44],
     ].forEach(([col, k, R, hs, n]) => {
       // lit by the sun with flat facets (the haze tint is pre-mixed because fog is off for the far scenery)
-      const mat = TH.mist
-          ? new THREE.MeshBasicMaterial({ color: new THREE.Color(col).lerp(fogC, 0.88), fog: false }) // ghostly shapes in the mist
-          : new THREE.MeshLambertMaterial({
-              color: new THREE.Color(col).lerp(fogC, k * 0.7),
-              fog: false,
-              flatShading: true,
-            }),
-        snow = new THREE.MeshLambertMaterial({
-          color: new THREE.Color('#f4f2ff').lerp(fogC, k * 0.5),
-          fog: false,
-          flatShading: true,
-        });
+      const mat =
+          TH.mist >= 0.5
+            ? new THREE.MeshBasicMaterial({
+                color: new THREE.Color(col).lerp(fogC, 0.45 + TH.mist * 0.45),
+                fog: false,
+              }) // ghostly shapes in the mist
+            : new THREE.MeshLambertMaterial({
+                color: new THREE.Color(col).lerp(fogC, Math.min(0.92, k * 0.7)),
+                fog: false,
+                flatShading: true,
+              }),
+        snow =
+          TH.mist >= 0.5
+            ? new THREE.MeshBasicMaterial({
+                color: new THREE.Color('#f4f2ff').lerp(fogC, 0.35 + TH.mist * 0.45),
+                fog: false,
+              })
+            : new THREE.MeshLambertMaterial({
+                color: new THREE.Color('#f4f2ff').lerp(fogC, k * 0.5),
+                fog: false,
+                flatShading: true,
+              });
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + Math.random() * 0.1,
           hgt = (60 + Math.random() * 140) * hs,
@@ -1416,7 +1426,7 @@ function start() {
     if (TH.big) {
       const f = new THREE.Mesh(
         new THREE.ConeGeometry(520, 420, 24, 1, true).translate(0, 210, 0),
-        far(TH.big, 0.25),
+        far(TH.big, 0.25 + (TH.mist || 0) * 0.5),
       );
       const cap = new THREE.Mesh(
         new THREE.ConeGeometry(160, 130, 24).translate(0, 355, 0),
@@ -1491,24 +1501,30 @@ function start() {
     skyMat.uniforms.sunCol.value.set(TH.sun[1]);
     sun.material.color.set(TH.sun[0]).multiplyScalar(night ? 1.2 : 3);
     sun.scale.setScalar(TH.sr * (night ? 0.7 : 1));
-    const mist = !!TH.mist;
-    scene.fog = mist ? new THREE.Fog(TH.fog, 12, 230) : new THREE.Fog(TH.fog, 140, night ? 700 : 1100);
-    scene.background = new THREE.Color(TH.fog);
+    // fog: TH.mist (0-1) sets how thick; 1 = monsoon murk (~230 m visibility), lighter values keep the sun
+    const mi = TH.mist || 0,
+      mist = mi > 0,
+      fc = new THREE.Color(TH.fog);
+    scene.fog = mist
+      ? new THREE.Fog(TH.fog, 10 + (1 - mi) * 40, 230 + (1 - mi) * 160)
+      : new THREE.Fog(TH.fog, 140, night ? 700 : 1100);
+    scene.background = fc.clone();
     if (mist) {
-      // monsoon murk: the sky fades to fog colour toward the horizon and the sun disappears
-      skyMat.uniforms.c2.value.set(TH.fog);
-      skyMat.uniforms.c3.value.set(TH.fog);
-      skyMat.uniforms.c1.value.lerp(new THREE.Color(TH.fog), 0.6);
-      skyMat.uniforms.sunCol.value.multiplyScalar(0.15);
+      // the sky fades to fog colour toward the horizon
+      skyMat.uniforms.c3.value.lerp(fc, Math.min(1, mi * 1.2));
+      skyMat.uniforms.c2.value.lerp(fc, mi);
+      skyMat.uniforms.c1.value.lerp(fc, mi * 0.6);
+      skyMat.uniforms.sunCol.value.multiplyScalar(1 - mi * 0.85);
     }
-    sun.visible = !mist;
+    sun.visible = mi < 0.8;
+    sun.material.color.multiplyScalar(1 - mi * 0.6);
     sunLight.color.set(night ? 0x8fa0ff : TH.sun[1]);
-    sunLight.intensity = night ? 0.5 : mist ? 0.45 : 1.9;
+    sunLight.intensity = night ? 0.5 * (1 - mi * 0.3) : 1.9 - mi * 1.45;
     hemi.color.set(S[1]);
     hemi.groundColor.set(TH.grass[0]);
-    hemi.intensity = night ? 0.55 : mist ? 1.25 : 0.95;
+    hemi.intensity = night ? 0.55 + mi * 0.2 : 0.95 + mi * 0.3;
     stars.visible = night;
-    bloom.strength = night ? 0.5 : mist ? 0.45 : 0.22; // lamps glow through the mist
+    bloom.strength = night ? 0.5 + mi * 0.2 : 0.22 + mi * 0.23; // lamps glow through the mist
     renderer.toneMappingExposure = night ? 1.2 : 1.0;
     world.traverse(o => {
       if (o.userData.detail) o.visible = !lowGfx();
