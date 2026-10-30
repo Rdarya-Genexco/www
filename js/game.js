@@ -1029,7 +1029,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
             CAP * 0.99,
             MAXS *
               clamp(
-                (0.55 + 0.45 * diffSel + b.off) * [0.97, 1, 1.03][(MAPS[mapSel].dif || 2) - 1],
+                (0.55 + 0.45 * pace() + b.off) * [0.97, 1, 1.03][(MAPS[mapSel].dif || 2) - 1],
                 0.4,
                 1.04,
               ) *
@@ -1057,6 +1057,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     chk(pos + PZ, px, speed);
     return best;
   }
+  /* rival pace: the setting runs 25-100%, and 100% drives the way 50% used to (bots were too quick) */
+  const pace = () => diffSel * 0.5;
   /* average bend between a and b segments ahead of z (positive = right-hander) */
   function bendAhead(z, a, b) {
     const i0 = Math.floor(z / SL);
@@ -1073,7 +1075,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       bend = Math.max(Math.abs(cNear), Math.abs(cFar) * 0.9);
     let tgt = state === 'count' ? 0 : c.top * (1 - Math.min(0.26, bend * c.cu));
     // mistakes: run wide, lock up under braking, or lift off; more often at lower rival pace
-    if (state === 'race' && !(c.mk > 0) && Math.random() < dt * (0.012 + 0.05 * (1 - diffSel))) {
+    if (state === 'race' && !(c.mk > 0) && Math.random() < dt * (0.012 + 0.05 * (1 - pace()))) {
       c.mk = 0.8 + Math.random() * 0.8;
       c.mkType = ['wide', 'lock', 'lift'][(Math.random() * 3) | 0];
     }
