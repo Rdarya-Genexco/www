@@ -27,6 +27,15 @@ python3 -m http.server 8000
 
 then open http://localhost:8000. Opening `index.html` straight from disk runs the game, but online sign-in needs a real web address (localhost or a hosted site).
 
+## Install as an app (PWA)
+
+The site is an installable web app: `manifest.json` (name, colours, full-screen launch), `icons/` (192 px, 512 px, a maskable 512 px for Android and an Apple touch icon) and `sw.js`, a service worker that saves every game file on first visit so the game opens instantly and plays offline (online sign-in and saves still need internet). Updates download in the background and apply on the next launch.
+
+- Chrome / Edge on Windows, Mac, Android: the menu shows an **Install app** button, or use the browser's install icon in the address bar.
+- iPhone / iPad (Safari): Share, then **Add to Home Screen**.
+
+If you add or rename game files, add them to the `FILES` list in `sw.js` so they're saved for offline play from the first visit (anything missed is still saved the first time it loads).
+
 ## Rendering
 
 The game runs in 3D through WebGL. On devices without WebGL, `view3d.js` never starts and `game.js` keeps drawing the original 2D pseudo-3D road, so the game always works.

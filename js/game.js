@@ -107,6 +107,33 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     SS('ghatrun-map', mapSel);
     cloudPush();
   };
+  /* ---------- installable app: offline files (sw.js) and the browser's install prompt ---------- */
+  let installPrompt = null;
+  // (not inside the Windows app, which already ships every file)
+  if (
+    'serviceWorker' in navigator &&
+    location.protocol.startsWith('http') &&
+    !/Electron/.test(navigator.userAgent)
+  )
+    addEventListener('load', () =>
+      navigator.serviceWorker.register('sw.js').catch(e => console.warn('offline mode unavailable', e)),
+    );
+  addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); // show our own Install button in the menu instead
+    installPrompt = e;
+    if (
+      typeof state !== 'undefined' &&
+      state === 'menu' &&
+      me &&
+      !ov.hidden &&
+      $('ov').querySelector('.menu')
+    )
+      showMenu();
+  });
+  addEventListener('appinstalled', () => {
+    installPrompt = null;
+  });
+
   /* ---------- online account: same drivers on any browser or device ---------- */
   /* cReady: the online copy has been loaded and merged. Until then nothing is pushed, so a slow or failed
      load can never overwrite the online save with this browser's data */
@@ -2371,7 +2398,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           )
           .join('') +
         '</div>' +
-        '<div class="row"><button class="chip" data-a="settings">Settings</button></div>' +
+        '<div class="row"><button class="chip" data-a="settings">Settings</button>' +
+        (installPrompt ? '<button class="chip" data-a="install">⬇ Install app</button>' : '') +
+        '</div>' +
         '<span class="hint k">Steer with the arrow keys. Space nitro, S brake, D drift on/off, M mute, Esc quit.</span>' +
         '<span class="hint t">Drag the joystick (or hold the arrows) to steer and press Nitro to boost. Gas is automatic.</span>',
     );
@@ -2755,6 +2784,14 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       ov.querySelectorAll('[data-a=body]').forEach(s => s.classList.toggle('on', s.dataset.v === v));
       const cd = $('cdesc');
       if (cd) cd.textContent = CARS[v].d;
+    } else if (a === 'install') {
+      if (installPrompt) {
+        installPrompt.prompt();
+        installPrompt.userChoice.finally(() => {
+          installPrompt = null;
+          if (state === 'menu') showMenu();
+        });
+      }
     } else if (a === 'gfx') {
       window.view3d.setQuality(v);
       showSettings();
