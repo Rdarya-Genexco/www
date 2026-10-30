@@ -11,7 +11,6 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 const G = window.__game;
-const clamp3 = (v, a, b) => Math.max(a, Math.min(b, v));
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
 /* FS is set so the motion on screen matches the speedometer (260 km/h at full speed) */
 const FS = window.SPEED.base / 3.6 / 12000,
@@ -1702,14 +1701,8 @@ function start() {
       scene.add(player);
       playerKey = key;
     }
-    // body yaw follows steering and drift, and swings out when the tyres slide (slip); it leans into turns
-    place(
-      player,
-      pos + G.PZ,
-      px,
-      -G.steer * 0.07 * sf - G.drift * 0.35 + clamp3(G.slip * 0.12, -0.35, 0.35),
-      G.steer * 0.025 * sf + clamp3(G.slip * 0.02, -0.06, 0.06),
-    );
+    // body turns a little with steering, more when drifting, and leans slightly
+    place(player, pos + G.PZ, px, -G.steer * 0.07 * sf - G.drift * 0.35, G.steer * 0.025 * sf);
     spin(player, sf * dt * 60);
     player.userData.tail.emissiveIntensity = G.braking ? 4.5 : 1.4;
     // damage: a fresh car when health resets, a dent for every hit
