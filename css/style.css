@@ -1343,3 +1343,16 @@ h1 {
 body.tui #mu {
   top: calc(166px + env(safe-area-inset-top, 0px));
 }
+a.chip {
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+a.mb {
+  color: var(--ink);
+  text-decoration: none;
+}
+.mb.dl b {
+  color: var(--glow);
+}
