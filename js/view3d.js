@@ -1836,7 +1836,7 @@ function start() {
       let m = meshes.get(c);
       if (!m) {
         m = c.hz ? makeHazard(c.hz, c.col) : c.ghost ? makeGhost(c.body, c.col) : makeCar(c.body, c.col);
-        if (c.rv) m.add(label(c.name));
+        if (c.rv || c.net) m.add(label(c.name)); // rivals and other online players
         scene.add(m);
         meshes.set(c, m);
       }

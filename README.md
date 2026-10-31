@@ -36,6 +36,25 @@ The site is an installable web app: `manifest.json` (name, colours, full-screen 
 
 If you add or rename game files, add them to the `FILES` list in `sw.js` so they're saved for offline play from the first visit (anything missed is still saved the first time it loads).
 
+## Multiplayer
+
+Menu → **Multiplayer**: non-stop racing with every signed-in driver who's online. Everyone is on the same map at the same time; maps rotate every 5 minutes (`MP_MIN` in `js/game.js`) by the server clock. Each lap earns 2 points. Other players show as cars with name tags (you can't collide with them, since positions arrive slightly delayed), on the minimap and on the live leaderboard. A wrecked car is repaired on the spot.
+
+Positions go through the Firebase **Realtime Database** at `mp/{room}/{uid}` (about 8 updates a second per player; entries are removed automatically on disconnect). Realtime Database rules needed:
+
+```
+{
+  "rules": {
+    "mp": {
+      "$room": {
+        ".read": "auth != null",
+        "$uid": { ".write": "auth != null && auth.uid === $uid" }
+      }
+    }
+  }
+}
+```
+
 ## Rendering
 
 The game runs in 3D through WebGL. On devices without WebGL, `view3d.js` never starts and `game.js` keeps drawing the original 2D pseudo-3D road, so the game always works.

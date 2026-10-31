@@ -1651,8 +1651,104 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ];
     for (const c of cars)
       if (c.rv) L.push({ id: c.id, name: c.name, col: c.col, d: c.d, fin: c.fin, ft: c.ft });
+      else if (c.net)
+        L.push({
+          id: c.id,
+          name: c.name,
+          col: c.col,
+          d: c.l * TL + ((c.z - PZ + TL) % TL),
+          fin: false,
+          ft: 0,
+        });
     L.sort((a, b) => (a.fin && b.fin ? a.ft - b.ft : a.fin ? -1 : b.fin ? 1 : b.d - a.d));
     return L;
+  }
+
+  /* ---------- multiplayer: endless racing with other signed-in drivers ----------
+     Everyone is on the same map at the same time: maps rotate every MP_MIN minutes by the server clock.
+     Each car sends its position ~8 times a second; other players show as cars you race but can't hit */
+  const MP_MIN = 5,
+    MP_ORDER = Object.keys(MAPS);
+  let mpOn = false,
+    mpMap = null,
+    mpBest = 0,
+    mpPlayers = {},
+    mpUid = null,
+    mpSendT = 0;
+  const netCars = new Map();
+  const mpNow = () => (window.cloud && window.cloud.mp ? window.cloud.mp.now() : Date.now());
+  const mpMapNow = () => MP_ORDER[Math.floor(mpNow() / (MP_MIN * 60000)) % MP_ORDER.length];
+  const mpLeft = () => MP_MIN * 60000 - (mpNow() % (MP_MIN * 60000));
+  function startMp() {
+    if (!cUser || !window.cloud || !window.cloud.mp) {
+      cMsg = 'Sign in to race online with other drivers.';
+      return showCloud();
+    }
+    mpOn = true;
+    loadMap(mpMapNow());
+    mpMap = mapSel;
+    mpBest = 0;
+    window.cloud.mp.join('world', (all, uid) => {
+      mpPlayers = all;
+      mpUid = uid;
+    });
+    begin('mp');
+  }
+  function stopMp() {
+    if (!mpOn) return;
+    mpOn = false;
+    if (window.cloud && window.cloud.mp) window.cloud.mp.leave();
+    mpPlayers = {};
+    netCars.clear();
+  }
+  /* other players: create, move and remove their cars from the latest positions */
+  function mpSync(dt) {
+    const now = mpNow(),
+      seen = new Set();
+    for (const id in mpPlayers) {
+      const p = mpPlayers[id];
+      if (id === mpUid || !p || p.m !== mapSel || now - (p.t || 0) > 15000) continue;
+      seen.add(id);
+      let c = netCars.get(id);
+      if (!c) {
+        c = {
+          net: 1,
+          id,
+          name: p.n || 'Driver',
+          col: p.c || '#aaaaaa',
+          body: p.b || 'coupe',
+          z: 0,
+          o: 0,
+          sp: 0,
+          pd: 0,
+          l: 0,
+          bl: 0,
+        };
+        c.z = ((p.d || 0) + PZ) % TL;
+        c.s = Math.floor(c.z / SL) % N;
+        segs[c.s].cars.push(c);
+        cars.push(c);
+        netCars.set(id, c);
+      }
+      // where they should be now: last reported spot plus how far they've driven since
+      const tz = ((p.d || 0) + ((p.s || 0) * Math.max(0, now - p.t)) / 1000 + PZ) % TL;
+      let dz = tz - c.z;
+      if (dz > TL / 2) dz -= TL;
+      if (dz < -TL / 2) dz += TL;
+      c.z = (((c.z + dz * Math.min(1, dt * 8)) % TL) + TL) % TL;
+      c.o += ((p.x || 0) - c.o) * Math.min(1, dt * 8);
+      c.sp = p.s || 0;
+      c.l = p.l || 0;
+      c.bl = p.bl || 0;
+      Object.assign(c, { name: p.n || c.name, col: p.c || c.col, body: p.b || c.body });
+    }
+    for (const [id, c] of netCars)
+      if (!seen.has(id)) {
+        const a = segs[c.s] && segs[c.s].cars;
+        if (a && a.includes(c)) a.splice(a.indexOf(c), 1);
+        cars.splice(cars.indexOf(c), 1);
+        netCars.delete(id);
+      }
   }
 
   /* ---------- race flow ---------- */
@@ -1661,7 +1757,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     audio();
     mode = m;
     runId++;
-    LAPS = chal ? chal.laps : lapsSel;
+    LAPS = chal ? chal.laps : m === 'mp' ? 1e9 : lapsSel;
     wx = TH.rain ? 0 : chal ? (chal.wx ? 1 : 0) : Math.random() < 0.25 ? 1 : 0;
     ov.hidden = true;
     document.body.classList.add('play');
@@ -1696,6 +1792,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     applyUp();
     state = 'count';
     spawn(m === 'bots', false);
+    netCars.clear(); // other players' cars are re-added from the live positions
     ghostRec = [];
     ghostRecT = 0;
     ghost = m === 'tt' ? LS(ghostKey(), null) : null;
@@ -1763,6 +1860,18 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     lapStart = time;
     laps.push(lt);
     cpNext = 0;
+    if (mode === 'mp') {
+      if (!mpBest || lt < mpBest) mpBest = lt;
+      if (me) {
+        reloadStore();
+        me.points += 2;
+        me.careerPts += 2;
+        save();
+      }
+      lap = laps.length + 1;
+      toast('Lap ' + laps.length + ' · ' + fmt(lt) + ' · +2 pts', 0, 'cp');
+      return;
+    }
     if (me) {
       const bl = bestLap(me);
       if (!bl || lt < bl) {
@@ -2276,6 +2385,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     ov.scrollTop = 0;
   }
   function showMenu() {
+    stopMp();
     if (state === 'done' && (pFin || wreck) && me) settle();
     else reloadStore();
     wreck = false;
@@ -2354,6 +2464,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         lapsSel +
         (lapsSel === 1 ? ' lap' : ' laps') +
         ' · 1st 25 · 2nd 15 · 3rd 10 · 4th 5 pts</small></button>' +
+        '<button class="mb" data-a="mp"><b>Multiplayer</b><small>Race non-stop with other drivers online · maps rotate every ' +
+        MP_MIN +
+        ' min · +2 pts a lap</small></button>' +
         '<button class="mb" data-a="tt"><b>Time Trial</b><small>Solo run, no rivals · best ' +
         (bestTT(me) ? fmt(bestTT(me)) : '–') +
         '</small></button>' +
@@ -2778,6 +2891,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     const a = b.dataset.a,
       v = b.dataset.v;
     if (a === 'bots' || a === 'tt') begin(a);
+    else if (a === 'mp') startMp();
     else if (a === 'again') begin(mode);
     else if (a === 'garage') showGarage();
     else if (a === 'league') showLeague();
@@ -3120,7 +3234,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     for (const c of cars) {
       if (c.rv) {
         if (state === 'race' || state === 'count' || state === 'done') rivalStep(c, dt);
-      } else if (c.ghost) {
+      } else if (c.ghost || c.net) {
         // placed by the ghost playback above
       } else {
         c.z = (c.z + dt * c.sp) % TL;
@@ -3139,7 +3253,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       let dz = c.z - pp;
       if (dz > TL / 2) dz -= TL;
       if (dz < -TL / 2) dz += TL;
-      if (state === 'race' && !c.ghost) {
+      if (state === 'race' && !c.ghost && !c.net) {
         const dxo = Math.abs(c.o - px);
         if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
           speed = Math.max(c.sp, MAXS * 0.16) * 0.5;
@@ -3184,6 +3298,38 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
       c.pd = dz;
     }
+    if (mode === 'mp' && mpOn && (state === 'race' || state === 'count')) {
+      mpSync(dt);
+      mpSendT -= dt;
+      if (mpSendT <= 0 && window.cloud && window.cloud.mp) {
+        mpSendT = 0.12;
+        window.cloud.mp.send({
+          n: me ? me.name : 'Driver',
+          c: me ? me.color : COLS[0],
+          b: me ? me.body : 'coupe',
+          m: mapSel,
+          d: Math.round(pos),
+          x: +px.toFixed(3),
+          s: state === 'race' ? Math.round(speed) : 0,
+          l: laps.length,
+          bl: +(mpBest || 0).toFixed(2),
+        });
+      }
+      // next map in the rotation: everyone switches together
+      if (mpMapNow() !== mpMap) {
+        loadMap(mpMapNow());
+        mpMap = mapSel;
+        mpBest = 0;
+        begin('mp');
+        toast('Next map · ' + MAPS[mapSel].name, 0, 'cp');
+      }
+    }
+    // multiplayer: a wrecked car is repaired on the spot so you stay in the race
+    if (state === 'race' && dmg >= 1 && !inv() && mode === 'mp') {
+      dmg = 0;
+      speed = 0;
+      toast('Car repaired', 0, 'cp');
+    }
     if (state === 'race' && dmg >= 1 && !inv()) {
       wreck = true;
       state = 'done';
@@ -3208,16 +3354,21 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     $('df').style.setProperty('--hc', dmg > 0.65 ? '#ff5a5a' : dmg > 0.35 ? '#ffc15e' : '#6ff0e4');
     $('dl').textContent = inv() ? 'INVINCIBLE' : Math.round(100 - dmg * 100) + '%';
     $('nl').textContent = boost > 0.3 ? 'BOOST' : dLock ? 'DRIFT ON' : nit < 20 ? 'LOW' : 'READY';
-    $('lap').textContent =
-      innerWidth < 520
-        ? 'Lap ' + Math.min(lap, LAPS) + '/' + LAPS
-        : 'Lap ' +
-          Math.min(lap, LAPS) +
-          ' of ' +
-          LAPS +
-          ' · ' +
-          Math.min(100, Math.floor((dist() / (LAPS * TL)) * 100)) +
-          '%';
+    if (mode === 'mp') {
+      const left = Math.max(0, Math.ceil(mpLeft() / 1000));
+      $('lap').textContent =
+        'Lap ' + lap + ' · ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') + ' left';
+    } else
+      $('lap').textContent =
+        innerWidth < 520
+          ? 'Lap ' + Math.min(lap, LAPS) + '/' + LAPS
+          : 'Lap ' +
+            Math.min(lap, LAPS) +
+            ' of ' +
+            LAPS +
+            ' · ' +
+            Math.min(100, Math.floor((dist() / (LAPS * TL)) * 100)) +
+            '%';
     $('tm').textContent = fmt(time);
     $('bst').textContent = me && bestLap(me) ? fmt(bestLap(me)) : '–';
     hudT += dt;
@@ -3236,10 +3387,15 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     const rk = ranking(),
       i = rk.findIndex(r => r.me);
     placeNow = i;
-    $('pos').textContent = ORD[i] + ' of ' + rk.length;
+    $('pos').textContent = (ORD[i] || i + 1 + 'th') + ' of ' + rk.length;
     const tot = LAPS * TL;
     let g = '';
-    if (i > 0 && !rk[i].fin)
+    if (mode === 'mp')
+      g =
+        MAPS[mapSel].name +
+        ' · ' +
+        (rk.length > 1 ? rk.length + ' drivers online' : 'waiting for other drivers…');
+    else if (i > 0 && !rk[i].fin)
       g = '+' + (((Math.min(rk[0].d, tot) - rk[i].d) / tot) * 100).toFixed(1) + '% behind';
     else if (i === 0 && rk.length > 1 && !rk[i].fin)
       g = '+' + (((rk[0].d - rk[1].d) / tot) * 100).toFixed(1) + '% ahead';
@@ -3292,7 +3448,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       mx.stroke();
       mx.fill();
     };
-    for (const c of cars) if (c.rv) dot(c.d, c.col, 4.5);
+    for (const c of cars)
+      if (c.rv) dot(c.d, c.col, 4.5);
+      else if (c.net) dot(c.z - PZ, c.col, 4.5);
     dot(dist(), me ? me.color : COLS[0], 6);
   }
 
@@ -4501,7 +4659,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           else cow(X, Y, w * 1.1, Math.cos(c.ph));
         } else if (w > 2) {
           car(X, Y, w, c.col, 0, 0, c.rv ? 1 : 0, c.body);
-          if (c.rv && w > 34) {
+          if ((c.rv || c.net) && w > 34) {
             ctx.font =
               '800 ' + Math.max(12, Math.round(w * 0.17)) + "px 'Big Shoulders Display',Impact,sans-serif";
             ctx.textAlign = 'center';
