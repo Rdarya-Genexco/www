@@ -9,6 +9,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 
 const G = window.__game;
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
@@ -50,18 +51,38 @@ function start() {
   const composer = new EffectComposer(renderer, msaa());
   composer.setSize(innerWidth, innerHeight);
   composer.addPass(new RenderPass(scene, camera));
+  /* ambient occlusion (High quality only): soft contact shading where things meet, under cars, round trunks */
+  const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+  gtao.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.5, thickness: 1.5, scale: 1.1, samples: 12 });
+  gtao.blendIntensity = 0.85;
+  gtao.enabled = false;
+  composer.addPass(gtao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.4, 0.45, 0.98);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
   /* final colour grade, like a console racer: a touch more contrast and colour, cool shadows, warm highlights */
   const GRADE = {
-    uniforms: { tDiffuse: { value: null }, contrast: { value: 1.07 }, saturation: { value: 1.12 } },
+    uniforms: {
+      tDiffuse: { value: null },
+      contrast: { value: 1.07 },
+      saturation: { value: 1.12 },
+      speed: { value: 0 },
+      time: { value: 0 },
+    },
     vertexShader:
       'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-    fragmentShader: `uniform sampler2D tDiffuse;uniform float contrast,saturation;varying vec2 vUv;
-      void main(){vec3 c=texture2D(tDiffuse,vUv).rgb;c=(c-.5)*contrast+.5;
+    // plus a camera-lens finish: radial speed blur at the edges, slight colour fringing, fine film grain
+    fragmentShader: `uniform sampler2D tDiffuse;uniform float contrast,saturation,speed,time;varying vec2 vUv;
+      float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233))+time)*43758.5453);}
+      void main(){vec2 d=vUv-.5;float e=dot(d,d);
+        vec2 fr=d*e*.012;
+        vec3 c=vec3(texture2D(tDiffuse,vUv-fr).r,texture2D(tDiffuse,vUv).g,texture2D(tDiffuse,vUv+fr).b);
+        if(speed>.01){float k=speed*e*.09;vec3 acc=c;
+          for(int i=1;i<6;i++){acc+=texture2D(tDiffuse,vUv-d*k*float(i)).rgb;}c=acc/6.;}
+        c=(c-.5)*contrast+.5;
         float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,saturation);
         c+=vec3(.018,.006,-.012)*smoothstep(.5,1.,l)+vec3(-.01,0.,.018)*(1.-smoothstep(0.,.45,l));
+        c+=(rnd(vUv*vec2(1920.,1080.))-.5)*.025;
         gl_FragColor=vec4(clamp(c,0.,1.),1.);}`,
   };
   const grade = new ShaderPass(GRADE);
@@ -70,6 +91,7 @@ function start() {
   addEventListener('resize', () => {
     renderer.setSize(innerWidth, innerHeight);
     composer.setSize(innerWidth, innerHeight);
+    gtao.setSize(innerWidth, innerHeight);
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
   });
@@ -890,6 +912,31 @@ function start() {
   // data textures (bumps, roughness) must not be colour-converted
   TEX.flake.colorSpace = TEX.rough.colorSpace = THREE.NoColorSpace;
 
+  /* trees sway gently: foliage vertices drift with a slow wave that differs per tree */
+  const TREE_KINDS = ['pine', 'palm', 'broad', 'cactus', 'sakura'],
+    windT = { value: 0 };
+  function sway(mat) {
+    if (mat.userData.sway) return;
+    mat.userData.sway = true;
+    mat.onBeforeCompile = sh => {
+      sh.uniforms.windT = windT;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float windT;')
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          #ifdef USE_INSTANCING
+            float ph = instanceMatrix[3].x * 0.13 + instanceMatrix[3].z * 0.07;
+          #else
+            float ph = 0.0;
+          #endif
+          float bend = max(0.0, position.y - 1.5) * 0.035;
+          transformed.x += sin(windT * 1.3 + ph) * bend;
+          transformed.z += cos(windT * 1.1 + ph) * bend * 0.6;`,
+        );
+    };
+  }
+
   /* ---------- world: built from the game's track whenever the map changes ---------- */
   let world = null,
     builtVer = -1,
@@ -1341,7 +1388,8 @@ function start() {
       }
     for (const k in parts) {
       const { list, m } = parts[k];
-      for (const [geo, mat] of list) {
+      for (const [pi, [geo, mat]] of list.entries()) {
+        if (pi > 0 && TREE_KINDS.includes(k)) sway(mat);
         const im = new THREE.InstancedMesh(geo, mat, m.length),
           tint = new THREE.Color();
         m.forEach((mm, i) => {
@@ -1528,6 +1576,9 @@ function start() {
     world.traverse(o => {
       if (o.userData.detail) o.visible = !lowGfx();
     });
+    skidMesh.count = 0;
+    skidI = 0;
+    playerKey = ''; // rebuild the player's car (headlights on night maps)
     builtVer = G.trackVer;
   }
   const sunDir = new THREE.Vector3();
@@ -1674,6 +1725,59 @@ function start() {
     }
   }
 
+  /* ---------- night headlights: two beams from the player's car that light the road ahead ---------- */
+  function headlights(car) {
+    const [L, W, r, hood] = car.userData.size;
+    for (const sx of [-1, 1]) {
+      const sp = new THREE.SpotLight(0xfff2d8, 900, 80 / CAR, 0.36, 0.45, 1.5);
+      sp.position.set(sx * (W / 2 - 0.35), r + hood * 0.6, -L / 2);
+      sp.target.position.set(sx * 0.6, 0, -L / 2 - 18);
+      car.add(sp, sp.target);
+    }
+  }
+
+  /* ---------- skid marks: drifting or sliding leaves dark tyre marks that fade as new ones replace them ---------- */
+  const SKID_N = 600,
+    skidMesh = new THREE.InstancedMesh(
+      new THREE.PlaneGeometry(0.32, 0.7).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({
+        color: 0x0c0b10,
+        transparent: true,
+        opacity: 0.45,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -3,
+      }),
+      SKID_N,
+    );
+  skidMesh.count = 0;
+  skidMesh.frustumCulled = false;
+  scene.add(skidMesh);
+  let skidI = 0,
+    skidT = 0;
+  const sm4 = new THREE.Matrix4(),
+    sq = new THREE.Quaternion(),
+    sv = new THREE.Vector3(),
+    ss = new THREE.Vector3(1, 1, 1);
+  function skids(dt, sf) {
+    const sliding = G.state === 'race' && sf > 0.3 && (Math.abs(G.drift) > 0.35 || Math.abs(G.slip) > 0.9);
+    if (!sliding || lowGfx()) return;
+    skidT -= dt;
+    if (skidT > 0) return;
+    skidT = 0.035;
+    const [L, W] = player.userData.size;
+    sq.setFromEuler(new THREE.Euler(0, player.rotation.y, 0));
+    for (const sx of [-1, 1]) {
+      player.localToWorld(sv.set(sx * (W / 2 - 0.15), 0, L / 2 - 0.85));
+      sv.y += 0.03;
+      sm4.compose(sv, sq, ss);
+      skidMesh.setMatrixAt(skidI, sm4);
+      skidI = (skidI + 1) % SKID_N;
+      skidMesh.count = Math.max(skidMesh.count, skidI === 0 ? SKID_N : skidI);
+    }
+    skidMesh.instanceMatrix.needsUpdate = true;
+  }
+
   /* ---------- per-frame ---------- */
   const look = new THREE.Vector3();
   let lastT = performance.now();
@@ -1697,6 +1801,7 @@ function start() {
         disposeTree(player);
       }
       player = makeCar(pl.body, pl.col, true, true);
+      if (G.TH.stars) headlights(player);
       lastDmg = 0;
       scene.add(player);
       playerKey = key;
@@ -1704,6 +1809,11 @@ function start() {
     // body turns a little with steering, more when drifting, and leans slightly
     place(player, pos + G.PZ, px, -G.steer * 0.07 * sf - G.drift * 0.35, G.steer * 0.025 * sf);
     spin(player, sf * dt * 60);
+    windT.value += dt;
+    grade.uniforms.time.value = (grade.uniforms.time.value + dt) % 100;
+    grade.uniforms.speed.value =
+      G.state === 'race' && !G.reduce ? Math.max(0, (sf - 0.55) * 2.2) + G.boost * 0.6 : 0;
+    skids(dt, sf);
     player.userData.tail.emissiveIntensity = G.braking ? 4.5 : 1.4;
     // damage: a fresh car when health resets, a dent for every hit
     const dm = G.invincible ? 0 : G.dmg;
@@ -1924,6 +2034,11 @@ function start() {
     const hi = quality === 'high';
     renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio, hi ? 2 : coarse ? 1.25 : 1.75));
     const sm = hi && !coarse ? 4096 : coarse ? 1024 : 2048;
+    // High: ambient occlusion and shadows that reach further from the car
+    gtao.enabled = hi && !coarse;
+    const sr = hi ? 48 : 30;
+    Object.assign(sunLight.shadow.camera, { left: -sr, right: sr, top: sr, bottom: -sr });
+    sunLight.shadow.camera.updateProjectionMatrix();
     if (sunLight.shadow.mapSize.x !== sm) {
       sunLight.shadow.mapSize.set(sm, sm);
       if (sunLight.shadow.map) {
