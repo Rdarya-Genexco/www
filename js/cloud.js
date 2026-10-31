@@ -36,7 +36,8 @@ const app = initializeApp({
 });
 const auth = getAuth(app),
   /* skip undefined fields instead of rejecting the whole save */
-  db = initializeFirestore(app, { ignoreUndefinedProperties: true });
+  // long-polling fallback: copes with networks and proxies that drop Firestore's streaming connection
+  db = initializeFirestore(app, { ignoreUndefinedProperties: true, experimentalAutoDetectLongPolling: true });
 window.cloud = {
   user: () => auth.currentUser,
   signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),

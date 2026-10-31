@@ -1677,7 +1677,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     mpSendT = 0;
   const netCars = new Map();
   const mpNow = () => (window.cloud && window.cloud.mp ? window.cloud.mp.now() : Date.now());
-  const mpMapNow = () => MP_ORDER[Math.floor(mpNow() / (MP_MIN * 60000)) % MP_ORDER.length];
+  const mpSlot = () => Math.floor(mpNow() / (MP_MIN * 60000)); // which rotation we're in (same for everyone)
+  const mpMapNow = () => MP_ORDER[mpSlot() % MP_ORDER.length];
   const mpLeft = () => MP_MIN * 60000 - (mpNow() % (MP_MIN * 60000));
   function startMp() {
     if (!cUser || !window.cloud || !window.cloud.mp) {
@@ -1758,7 +1759,21 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     mode = m;
     runId++;
     LAPS = chal ? chal.laps : m === 'mp' ? 1e9 : lapsSel;
-    wx = TH.rain ? 0 : chal ? (chal.wx ? 1 : 0) : Math.random() < 0.25 ? 1 : 0;
+    // weather: random for solo races; in multiplayer it comes from the map rotation slot, so every player
+    // on the same map gets the same rain (or none)
+    wx = TH.rain
+      ? 0
+      : chal
+        ? chal.wx
+          ? 1
+          : 0
+        : m === 'mp'
+          ? (Math.imul(mpSlot() + 1, 2654435761) >>> 0) % 4 === 0
+            ? 1
+            : 0
+          : Math.random() < 0.25
+            ? 1
+            : 0;
     ov.hidden = true;
     document.body.classList.add('play');
     document.body.classList.toggle('tt', m === 'tt');
