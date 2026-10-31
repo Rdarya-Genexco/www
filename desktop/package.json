@@ -17,13 +17,19 @@
   "build": {
     "appId": "com.worldwidewheels.game",
     "productName": "Worldwide Wheels",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "app/**/*"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
     "win": {
-      "target": ["portable", "nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.png"
     },
-    "portable": { "artifactName": "WorldwideWheels-portable.exe" },
     "nsis": {
       "artifactName": "WorldwideWheels-Setup.exe",
       "oneClick": false,

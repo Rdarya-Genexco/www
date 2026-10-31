@@ -1,4 +1,4 @@
-# Builds the Windows desktop app (portable .exe and installer) on a Windows machine when you push a
+# Builds the Windows desktop app (installer .exe) on a Windows machine when you push a
 # version tag, e.g.  git tag v1.0.0 && git push origin v1.0.0
 # and publishes both files to a release named after the tag. It can also be run by hand from the
 # Actions tab: give a version (e.g. v1.0.1) and it creates that tag and release; leave it empty to just
@@ -61,8 +61,7 @@ jobs:
           body: |
             Windows build of Worldwide Wheels ${{ env.VERSION }}.
 
-            - **WorldwideWheels-portable.exe**: no install, just double-click to play.
-            - **WorldwideWheels-Setup.exe**: installs the game with Start menu and desktop shortcuts.
+            **WorldwideWheels-Setup.exe** installs the game with Start menu and desktop shortcuts.
 
             Windows may show a SmartScreen warning because the app isn't code-signed: click "More info", then "Run anyway".
           files: desktop/dist/*.exe
