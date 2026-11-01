@@ -500,6 +500,54 @@ function start() {
         g.add(box(0.05, 0.18, 0.16, cm, x, 0.42, z + 0.06));
     }
   }
+  /* racing stripes laid onto the model's body: drop rays from above and lay short strips on each hit,
+     tilted to the panel, skipping glass and wheels */
+  function bodyStripes(g, car, s) {
+    g.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster(),
+      down = new THREE.Vector3(0, -1, 0),
+      mat = paint(s.stripes),
+      n = 80,
+      step = (s.L * 0.96) / n,
+      skip = o => {
+        const mt = [].concat(o.material)[0] || {};
+        return o.userData.spin || mt.transparent || /glass|window|wind/i.test(o.name + " " + mt.name);
+      };
+    const hitAt = (x, z) => {
+      ray.set(new THREE.Vector3(x, 5, z), down);
+      const h = ray.intersectObject(car, true).find(h => h.face);
+      if (!h || skip(h.object)) return null;
+      const nm = h.face.normal.clone().transformDirection(h.object.matrixWorld);
+      return nm.y < 0.3 ? null : h.point.addScaledVector(nm, 0.012);
+    };
+    // one smooth ribbon per stripe, broken only where the glass is
+    for (const sx of [-0.28, 0.28]) {
+      const pos = [],
+        idx = [];
+      let prev = false;
+      for (let i = 0; i <= n; i++) {
+        const z = -s.L * 0.48 + i * step,
+          l = hitAt(sx - 0.075, z),
+          r = hitAt(sx + 0.075, z);
+        if (!l || !r) {
+          prev = false;
+          continue;
+        }
+        const v = pos.length / 3;
+        pos.push(l.x, l.y, l.z, r.x, r.y, r.z);
+        if (prev) idx.push(v - 2, v, v - 1, v - 1, v, v + 1);
+        prev = true;
+      }
+      if (!idx.length) continue;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      const rib = new THREE.Mesh(geo, mat);
+      rib.material.side = THREE.DoubleSide;
+      g.add(rib);
+    }
+  }
   function makeModelCar(src, s, col, live, own) {
     const m = s.model,
       g = new THREE.Group(),
@@ -546,6 +594,7 @@ function start() {
     car.position.z -= (b2.min.z + b2.max.z) / 2;
     g.add(car);
     if (m.fit) modelExtras(g, s, col, pm);
+    if (m.fit && s.stripes) bodyStripes(g, car, s);
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(s.W * 1.3, s.L * 1.1), SHADOW);
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.02;

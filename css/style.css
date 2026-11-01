@@ -1063,12 +1063,14 @@ body.gl .stage {
   bottom: 6vh;
   pointer-events: none;
   text-align: right;
+  max-width: 44vw;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
 }
 body.gl .stage b {
-  font-size: clamp(40px, 6vw, 76px);
+  font-size: clamp(32px, 4.2vw, 68px);
   font-weight: 900;
-  line-height: 0.9;
+  line-height: 0.95;
+  overflow-wrap: break-word;
 }
 body.gl .stage small {
   font-size: clamp(17px, 2vw, 22px);
@@ -1101,6 +1103,7 @@ body.gl .sc canvas {
     align-self: stretch;
     margin-top: 0 !important;
     flex: none;
+    max-width: none;
   }
   body.gl .stage b {
     font-size: clamp(32px, 9vw, 48px);
