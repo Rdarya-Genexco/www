@@ -11,7 +11,8 @@ const USE_REAL_NAMES = true;
 /* Speed limits in km/h. Nothing in the game goes faster than MAX_KMH, not even with upgrades or nitro. */
 const MAX_KMH = 300;
 
-/* Top speed of each car in km/h (before Garage upgrades). Upgrades add up to +20%, capped at MAX_KMH. */
+/* Top speed of each car in km/h (before Garage upgrades). Upgrades add up to +20%, capped at MAX_KMH.
+   Supercars top out at 250 so a fully upgraded one still sits under the cap and they stay different. */
 const TOP_SPEEDS = {
   coupe: 230,
   hatch: 221,
@@ -19,17 +20,17 @@ const TOP_SPEEDS = {
   van: 214,
   roadster: 230,
   pickup: 223,
-  toro: 255,
-  rosso: 262,
-  mclaren720: 266,
-  veyra: 282,
-  divo: 278,
-  phantom: 286,
-  senna: 288,
-  regera: 291,
-  sport300: 296,
-  jesko: 298,
-  bolide: 300,
+  toro: 236,
+  rosso: 238,
+  mclaren720: 240,
+  veyra: 243,
+  divo: 242,
+  phantom: 244,
+  senna: 245,
+  regera: 246,
+  sport300: 248,
+  jesko: 249,
+  bolide: 250,
 };
 
 /* Engine sound of each car: i4 (four-cylinder buzz), v8 (deep burble), v12 (high howl), w16 (huge roar). */

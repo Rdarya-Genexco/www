@@ -136,16 +136,16 @@ Don't change a car's `id` once players own it, because saves refer to cars by id
 | Van | Generic minivan | free | 214 | 0.90 | 0.95 | 0.50 |
 | Roadster | Generic open-top roadster | free | 230 | 1.05 | 1.20 | 1.35 |
 | Pickup | Generic pickup truck | free | 223 | 0.92 | 1.00 | 0.65 |
-| Toro V12 | Lamborghini Centenario | 150 | 255 | 1.18 | 1.04 | 1.05 |
-| Rosso GT | Ferrari 812 Superfast | 300 | 262 | 1.20 | 1.18 | 1.00 |
-| Veyra 16 | Bugatti Chiron | 600 | 282 | 1.26 | 1.10 | 0.85 |
-| Veyra Dive | Bugatti Divo | 900 | 278 | 1.25 | 1.22 | 0.90 |
-| Phantom X | Hypercar concept (not a real model) | 1000 | 286 | 1.34 | 1.24 | 0.85 |
-| Veyra 300+ | Bugatti Chiron Super Sport 300+ | 1200 | 296 | 1.30 | 1.08 | 0.85 |
-| Orbit 720 | McLaren 720S | 450 | 266 | 1.24 | 1.20 | 0.95 |
-| Orbit S | McLaren Senna | 1100 | 288 | 1.32 | 1.32 | 0.85 |
-| Spectre R | Koenigsegg Regera | 1300 | 291 | 1.36 | 1.15 | 0.85 |
-| Spectre J | Koenigsegg Jesko | 1400 | 298 | 1.38 | 1.28 | 0.80 |
-| Veyra Bolt | Bugatti Bolide | 1500 | 300 | 1.40 | 1.30 | 0.70 |
+| Toro V12 | Lamborghini Centenario | 150 | 236 | 1.18 | 1.04 | 1.05 |
+| Rosso GT | Ferrari 812 Superfast | 300 | 238 | 1.20 | 1.18 | 1.00 |
+| Veyra 16 | Bugatti Chiron | 600 | 243 | 1.26 | 1.10 | 0.85 |
+| Veyra Dive | Bugatti Divo | 900 | 242 | 1.25 | 1.22 | 0.90 |
+| Phantom X | Hypercar concept (not a real model) | 1000 | 244 | 1.34 | 1.24 | 0.85 |
+| Veyra 300+ | Bugatti Chiron Super Sport 300+ | 1200 | 248 | 1.30 | 1.08 | 0.85 |
+| Orbit 720 | McLaren 720S | 450 | 240 | 1.24 | 1.20 | 0.95 |
+| Orbit S | McLaren Senna | 1100 | 245 | 1.32 | 1.32 | 0.85 |
+| Spectre R | Koenigsegg Regera | 1300 | 246 | 1.36 | 1.15 | 0.85 |
+| Spectre J | Koenigsegg Jesko | 1400 | 249 | 1.38 | 1.28 | 0.80 |
+| Veyra Bolt | Bugatti Bolide | 1500 | 250 | 1.40 | 1.30 | 0.70 |
 
-Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds are set in TOP_SPEEDS; Garage upgrades add up to 20% and nitro about 8%, but nothing goes faster than MAX_KMH (300 km/h).
+Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds are set in TOP_SPEEDS; Garage upgrades add up to 20% and nitro about 8%, but nothing goes faster than MAX_KMH (300 km/h). Supercars top out at 250 so even fully upgraded they stay under the cap and still differ (Toro 283 → Bolide 300).
