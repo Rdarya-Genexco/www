@@ -16,7 +16,7 @@ const MAX_KMH = 300;
 const TOP_SPEEDS = {
   coupe: 230,
   hatch: 221,
-  wedge: 244,
+  wedge: 233,
   van: 214,
   roadster: 230,
   pickup: 223,

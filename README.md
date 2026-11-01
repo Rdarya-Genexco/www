@@ -132,7 +132,7 @@ Don't change a car's `id` once players own it, because saves refer to cars by id
 |---|---|---|---|---|---|---|
 | Coupe | Generic sports coupe | free | 230 | 1.00 | 1.00 | 1.00 |
 | Hatch | Generic hot hatch | free | 221 | 1.10 | 1.12 | 1.00 |
-| Wedge | Generic 80s wedge sports car | free | 244 | 0.95 | 0.90 | 1.00 |
+| Wedge | Generic 80s wedge sports car | free | 233 | 0.95 | 0.90 | 1.00 |
 | Van | Generic minivan | free | 214 | 0.90 | 0.95 | 0.50 |
 | Roadster | Generic open-top roadster | free | 230 | 1.05 | 1.20 | 1.35 |
 | Pickup | Generic pickup truck | free | 223 | 0.92 | 1.00 | 0.65 |
