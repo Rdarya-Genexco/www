@@ -10,6 +10,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const G = window.__game;
 /* game units -> metres: along the road, across it, and up (the 2D game exaggerates hills) */
@@ -345,7 +346,81 @@ function start() {
     g.computeVertexNormals();
     return g;
   }
+  /* ---------- professional 3D models (.glb) ----------
+     A car in js/cars.js can name a model file (model: { url, ... }). It loads in the background; until it
+     arrives (or if it fails) the built-in model is used, then every car using it is swapped over. */
+  const gltf = new GLTFLoader(),
+    MODELS = {};
+  let modelVer = 0;
+  function modelFor(m) {
+    const e = MODELS[m.url];
+    if (e) return e.scene || null;
+    MODELS[m.url] = { scene: null };
+    gltf.load(
+      m.url,
+      res => {
+        MODELS[m.url].scene = res.scene;
+        modelVer++;
+      },
+      undefined,
+      err => console.warn('could not load car model ' + m.url + ', using the built-in one', err),
+    );
+    return null;
+  }
+  function makeModelCar(src, s, col, live, own) {
+    const m = s.model,
+      g = new THREE.Group(),
+      car = src.clone(true),
+      pm = own ? paint(col, live).clone() : paint(col, live),
+      tail = M.tail.clone(),
+      paintRe = new RegExp(m.paint || 'paint|body|carpaint', 'i'),
+      tailRe = new RegExp(m.tail || 'tail|brake|rear_?light', 'i'),
+      wheelRe = new RegExp(m.wheels || 'wheel|tyre|tire', 'i');
+    let shell = null;
+    car.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      const name = (o.name || '') + ' ' + ((o.material && o.material.name) || '');
+      if (paintRe.test(name)) {
+        // your colour on the body panels; the player's copy gets its own geometry so it can dent
+        o.material = pm;
+        if (own) o.geometry = o.geometry.clone();
+        if (!shell) shell = o;
+      } else if (tailRe.test(name)) o.material = tail;
+      if (wheelRe.test(o.name || '')) o.userData.spin = true;
+    });
+    // size it to the car's length in js/cars.js (or an explicit scale), face it forward, sit it on the road
+    const box = new THREE.Box3().setFromObject(car),
+      size = box.getSize(new THREE.Vector3()),
+      k = m.scale || s.L / Math.max(size.x, size.z);
+    car.scale.multiplyScalar(k);
+    car.rotation.y = m.rotateY != null ? m.rotateY : 0;
+    const b2 = new THREE.Box3().setFromObject(car);
+    car.position.y -= b2.min.y - (m.y || 0);
+    car.position.x -= (b2.min.x + b2.max.x) / 2;
+    car.position.z -= (b2.min.z + b2.max.z) / 2;
+    g.add(car);
+    const shadow = new THREE.Mesh(new THREE.PlaneGeometry(s.W * 1.3, s.L * 1.1), SHADOW);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.02;
+    g.add(shadow);
+    Object.assign(g.userData, {
+      tail,
+      shell: shell || { geometry: new THREE.BufferGeometry() },
+      paint: pm,
+      base: pm.color.clone(),
+      rough: pm.roughness,
+      size: [s.L, s.W, s.r, s.hood],
+    });
+    g.scale.setScalar(CAR);
+    return g;
+  }
   function makeCar(body, col, live = true, own = false) {
+    const sm = SPEC[body];
+    if (sm && sm.model && sm.model.url) {
+      const src = modelFor(sm.model);
+      if (src) return makeModelCar(src, sm, col, live, own);
+    }
     const s = SPEC[body] || SPEC.coupe,
       g = new THREE.Group(),
       pm = own ? paint(col, live).clone() : paint(col, live), // own: the player's paint can scuff
@@ -1781,8 +1856,20 @@ function start() {
   /* ---------- per-frame ---------- */
   const look = new THREE.Vector3();
   let lastT = performance.now();
+  let seenModelVer = 0;
   function frame() {
     if (builtVer !== G.trackVer || !world) buildWorld();
+    // a model file finished loading: rebuild the cars so they use it
+    if (seenModelVer !== modelVer) {
+      seenModelVer = modelVer;
+      playerKey = '';
+      showKey = '';
+      for (const [c, m] of meshes) {
+        scene.remove(m);
+        disposeTree(m);
+        meshes.delete(c);
+      }
+    }
     const now = performance.now(),
       dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;

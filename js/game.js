@@ -107,6 +107,26 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     SS('ghatrun-map', mapSel);
     cloudPush();
   };
+  /* chat bar and button (they live outside the menu overlay); set up once the whole file has run */
+  setTimeout(() => {
+    const qb = $('chatq');
+    if (qb)
+      qb.innerHTML = QUICK.map(
+        q => '<button class="chip" data-q="' + esc(q) + '">' + esc(q) + '</button>',
+      ).join('');
+    document.addEventListener('click', e => {
+      const q = e.target.closest('[data-q]');
+      if (q) {
+        chatSend(q.dataset.q);
+        chatClose();
+      } else if (e.target.closest('#chatbtn')) chatOpen();
+      else if (e.target.closest('#chatsend')) {
+        chatSend($('chatin').value);
+        chatClose();
+      }
+    });
+  });
+
   /* ---------- installable app: offline files (sw.js) and the browser's install prompt ---------- */
   let installPrompt = null;
   const WIN_SETUP =
@@ -165,6 +185,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       curKey,
       league,
       settings: { diff: diffSel, music: musicOn, riv: rivSel, laps: lapsSel, map: mapSel },
+      friends,
+      recent,
     };
   }
   /* sign out: send any unsaved progress first, then clear this account's drivers from the browser so the
@@ -178,6 +200,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     await window.cloud.signOut().catch(() => {});
     cUser = null;
     for (const k in profiles) delete profiles[k];
+    for (const k in friends) delete friends[k];
+    for (const k in recent) delete recent[k];
+    SS('ghatrun-friends', friends);
+    SS('ghatrun-recent', recent);
     league = { bots: {} };
     ensureBots();
     curKey = null;
@@ -200,6 +226,13 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       const d = await window.cloud.load();
       if (d && d.profiles) for (const k in d.profiles) profiles[k] = better(profiles[k], d.profiles[k]);
       if (d && d.curKey && profiles[d.curKey]) curKey = d.curKey;
+      // friends and recent drivers: keep everything from both copies
+      if (d && d.friends) Object.assign(friends, d.friends);
+      if (d && d.recent)
+        for (const u in d.recent)
+          if (!recent[u] || (d.recent[u].t || 0) > (recent[u].t || 0)) recent[u] = d.recent[u];
+      SS('ghatrun-friends', friends);
+      SS('ghatrun-recent', recent);
       /* league: keep whichever copy of each bot has raced more this season */
       if (d && d.league && d.league.bots)
         for (const k in d.league.bots) league.bots[k] = better(league.bots[k], d.league.bots[k]);
@@ -1298,8 +1331,18 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         if (e.target.id === 'nm') createDriver();
         else if (e.target.id === 'cpw') cloudGo('in');
         else if (e.target.id === 'rcode') $('ov').querySelector('[data-a=mpjoin]').click();
+        else if (e.target.id === 'chatin') {
+          chatSend(e.target.value);
+          chatClose();
+        }
       }
+      if (e.code === 'Escape' && e.target.id === 'chatin') chatClose();
       return;
+    }
+    if (e.code === 'KeyT' && mode === 'mp' && mpOn && (state === 'race' || state === 'count')) {
+      e.preventDefault();
+      for (const k in inp) inp[k] = 0;
+      return chatOpen();
     }
     const k = KM[e.code];
     if (k) {
@@ -1704,6 +1747,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<button class="mb" data-a="mpgo" data-v="world"><b>Public race</b><small>Race everyone who is online right now</small></button>' +
         '<button class="mb" data-a="mpnew"><b>Create private room</b><small>Get a code to share, then race only your friends</small></button>' +
         '</div>' +
+        '<div id="friends">' +
+        friendsHtml() +
+        '</div>' +
         '<div class="sec">Join a private room</div>' +
         '<div class="row"><input id="rcode" class="fld" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" value="' +
         esc(code || '') +
@@ -1712,6 +1758,14 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<button class="btn alt" data-a="menu">Back</button>',
     );
     cMsg = '';
+    watchFriends();
+  }
+  function watchFriends() {
+    if (onlineStop || !window.cloud || !window.cloud.presence) return;
+    onlineStop = window.cloud.presence.watch(o => {
+      online = o || {};
+      refreshFriends();
+    });
   }
   function showRoom(code) {
     ovSet(
@@ -1735,6 +1789,8 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     }
     mpRoom = room;
     mpOn = true;
+    presenceT = 0;
+    document.body.classList.add('mp');
     loadMap(mpMapNow());
     mpMap = mapSel;
     mpBest = 0;
@@ -1748,8 +1804,109 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     if (!mpOn) return;
     mpOn = false;
     if (window.cloud && window.cloud.mp) window.cloud.mp.leave();
+    if (window.cloud && window.cloud.presence) window.cloud.presence.clear();
     mpPlayers = {};
     netCars.clear();
+    chatClose();
+    document.body.classList.remove('mp');
+  }
+
+  /* ---------- friends: people you've raced online (recent) and the ones you added (friends) ----------
+     Both are stored per account ({uid: {n: name}}) and synced with the online save */
+  let friends = LS('ghatrun-friends', {}),
+    recent = LS('ghatrun-recent', {}),
+    online = {},
+    onlineStop = null,
+    recentSaveT = 0,
+    presenceT = 0;
+  function saveFriends() {
+    SS('ghatrun-friends', friends);
+    SS('ghatrun-recent', recent);
+    cloudPush();
+  }
+  function friendsHtml() {
+    const me_ = cUser && cUser.uid,
+      row = (uid, f, btn) => {
+        const o = online && online[uid],
+          st = !o ? 'Offline' : o.room === 'public' ? 'Online · public race' : 'Online · private room';
+        return (
+          '<li class="fr' +
+          (o ? ' on' : '') +
+          '"><span><i></i>' +
+          esc(f.n || 'Driver') +
+          ' <small>' +
+          (btn === 'add' ? '' : st) +
+          '</small></span><span>' +
+          (btn === 'add'
+            ? '<button class="chip" data-a="fadd" data-v="' + esc(uid) + '">+ Add</button>'
+            : (o && o.room === 'public'
+                ? '<button class="chip on" data-a="mpgo" data-v="world">Join</button> '
+                : '') +
+              '<button class="lnk" data-a="fdel" data-v="' +
+              esc(uid) +
+              '" aria-label="Remove friend">✕</button>') +
+          '</span></li>'
+        );
+      };
+    const fl = Object.entries(friends).sort(
+        (a, b) => !!(online && online[b[0]]) - !!(online && online[a[0]]),
+      ),
+      rl = Object.entries(recent)
+        .filter(([u]) => !friends[u] && u !== me_)
+        .sort((a, b) => (b[1].t || 0) - (a[1].t || 0))
+        .slice(0, 8);
+    return (
+      '<div class="sec">Friends</div>' +
+      (fl.length
+        ? '<ul class="frl">' + fl.map(([u, f]) => row(u, f)).join('') + '</ul>'
+        : '<span class="hint">No friends yet: add drivers you race with below.</span>') +
+      (rl.length
+        ? '<div class="sec">Recent drivers</div><ul class="frl">' +
+          rl.map(([u, f]) => row(u, f, 'add')).join('') +
+          '</ul>'
+        : '')
+    );
+  }
+  function refreshFriends() {
+    const el = $('friends');
+    if (el) el.innerHTML = friendsHtml();
+  }
+
+  /* ---------- chat: messages ride along with each player's position updates ---------- */
+  let chatOut = null;
+  const chatSeen = {},
+    QUICK = ['GG', 'Nice pass!', 'Rematch?', 'Good race 👍', 'Sorry!'];
+  function chatAdd(name, text, col) {
+    const box = $('chat');
+    if (!box) return;
+    const d = document.createElement('div');
+    d.innerHTML = '<b style="color:' + esc(col || '#ffc15e') + '">' + esc(name) + '</b> ' + esc(text);
+    box.appendChild(d);
+    while (box.children.length > 5) box.firstChild.remove();
+    setTimeout(() => d.classList.add('old'), 8000);
+    setTimeout(() => d.remove(), 9000);
+  }
+  function chatSend(text) {
+    text = String(text || '')
+      .trim()
+      .slice(0, 80);
+    if (!text || mode !== 'mp') return;
+    chatOut = { text, t: Date.now() };
+    chatAdd(me ? me.name : 'You', text, me && me.color);
+    mpSendT = 0; // send right away
+  }
+  function chatOpen() {
+    if (mode !== 'mp' || !mpOn) return;
+    const bar = $('chatbar');
+    bar.hidden = false;
+    $('chatin').value = '';
+    $('chatin').focus();
+  }
+  function chatClose() {
+    const bar = $('chatbar');
+    if (bar) bar.hidden = true;
+    const i = $('chatin');
+    if (i) i.blur();
   }
   /* other players: create, move and remove their cars from the latest positions */
   function mpSync(dt) {
@@ -1791,6 +1948,17 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       c.l = p.l || 0;
       c.bl = p.bl || 0;
       Object.assign(c, { name: p.n || c.name, col: p.c || c.col, body: p.b || c.body });
+      // chat message from this player (each shown once)
+      if (p.msg && p.mt && chatSeen[id] !== p.mt) {
+        if (chatSeen[id] !== undefined || now - p.mt < 8000) chatAdd(p.n || 'Driver', p.msg, p.c);
+        chatSeen[id] = p.mt;
+      }
+      recent[id] = { n: p.n || 'Driver', t: Date.now() };
+    }
+    recentSaveT -= dt;
+    if (recentSaveT <= 0) {
+      recentSaveT = 10;
+      SS('ghatrun-recent', recent);
     }
     for (const [id, c] of netCars)
       if (!seen.has(id)) {
@@ -2444,6 +2612,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   }
   function ovSet(h) {
     if (window.view3d) window.view3d.showroom = null;
+    if (onlineStop) {
+      onlineStop();
+      onlineStop = null;
+    }
     ov.innerHTML = h;
     ov.hidden = false;
     ov.scrollTop = 0;
@@ -2961,7 +3133,15 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     if (a === 'bots' || a === 'tt') begin(a);
     else if (a === 'mp') showMp();
     else if (a === 'mpgo') startMp(v);
-    else if (a === 'mpnew') showRoom(newCode());
+    else if (a === 'fadd') {
+      friends[v] = { n: (recent[v] && recent[v].n) || 'Driver' };
+      saveFriends();
+      refreshFriends();
+    } else if (a === 'fdel') {
+      delete friends[v];
+      saveFriends();
+      refreshFriends();
+    } else if (a === 'mpnew') showRoom(newCode());
     else if (a === 'mpjoin') {
       const code = (($('rcode') || {}).value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
       if (code.length < 4) {
@@ -3335,6 +3515,23 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       let dz = c.z - pp;
       if (dz > TL / 2) dz -= TL;
       if (dz < -TL / 2) dz += TL;
+      // multiplayer bumping: each player pushes only their own car, so contact feels the same on both sides
+      if (state === 'race' && c.net && !c.hidden) {
+        const dxo = Math.abs(c.o - px);
+        if (c.bumpT > 0) c.bumpT -= dt;
+        if (Math.abs(dz) < SL * 1.1 && dxo < 0.3 && !(c.bumpT > 0)) {
+          c.bumpT = 0.4;
+          const side = Math.sign(px - c.o) || (Math.random() < 0.5 ? -1 : 1);
+          px += side * 0.08;
+          lv = side * 0.7;
+          if (dz > 0 && speed > c.sp) speed = Math.max(c.sp * 0.92, speed * 0.85); // ran into the back of them
+          shake = reduce ? 0 : 6;
+          vib(60);
+          crashSnd(0.22);
+          spark(W / 2 + (side > 0 ? -1 : 1) * Math.min(W * 0.24, H * 0.42) * 0.4, H * 0.9, 14, 380);
+          toast('Bump!', 0);
+        }
+      }
       if (state === 'race' && !c.ghost && !c.net) {
         const dxo = Math.abs(c.o - px);
         if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
@@ -3395,6 +3592,16 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           s: state === 'race' ? Math.round(speed) : 0,
           l: laps.length,
           bl: +(mpBest || 0).toFixed(2),
+          // the latest chat message is repeated for a few seconds so everyone receives it
+          ...(chatOut && Date.now() - chatOut.t < 6000 ? { msg: chatOut.text, mt: chatOut.t } : {}),
+        });
+      }
+      presenceT -= dt;
+      if (presenceT <= 0 && window.cloud && window.cloud.presence) {
+        presenceT = 15;
+        window.cloud.presence.set({
+          n: me ? me.name : 'Driver',
+          room: mpRoom === 'world' ? 'public' : 'private',
         });
       }
       // next map in the rotation: everyone switches together
@@ -4744,7 +4951,9 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           car(X, Y, w, c.col, 0, 0, c.rv ? 1 : 0, c.body);
           if ((c.rv || c.net) && w > 34) {
             ctx.font =
-              '800 ' + Math.max(12, Math.round(w * 0.17)) + "px 'Big Shoulders Display',Impact,sans-serif";
+              '800 ' +
+              Math.min(30, Math.max(12, Math.round(w * 0.17))) +
+              "px 'Big Shoulders Display',Impact,sans-serif";
             ctx.textAlign = 'center';
             ctx.fillStyle = '#fff4e0';
             ctx.shadowColor = '#13113a';

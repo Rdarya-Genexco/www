@@ -90,4 +90,38 @@ window.cloud.mp = {
     mpRef = null;
   },
 };
+/* presence for the friends list: online/{uid} = { n: name, room: 'public' | 'private' }, removed on disconnect.
+   Private room codes are never published here */
+let onRef = null,
+  onStop = null;
+window.cloud.presence = {
+  set(info) {
+    const u = auth.currentUser;
+    if (!u) return;
+    if (!onRef) {
+      onRef = ref(rtdb, 'online/' + u.uid);
+      onDisconnect(onRef).remove();
+    }
+    set(onRef, { ...info, t: rtNow() }).catch(e => console.warn('presence failed', e));
+  },
+  clear() {
+    if (onRef) remove(onRef).catch(() => {});
+    onRef = null;
+  },
+  watch(cb) {
+    if (onStop) onStop();
+    onStop = onValue(
+      ref(rtdb, 'online'),
+      s => cb(s.val() || {}),
+      e => {
+        console.warn('friends status unavailable', e);
+        cb(null);
+      },
+    );
+    return () => {
+      if (onStop) onStop();
+      onStop = null;
+    };
+  },
+};
 onAuthStateChanged(auth, u => dispatchEvent(new CustomEvent('cloudauth', { detail: u })));

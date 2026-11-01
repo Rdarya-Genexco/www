@@ -81,7 +81,12 @@ const PRICES = {
    style     3D details: sup (supercar parts), wing 0-3, lights (pair|quad|y|bar|thin|x|ring),
              exhaust (side|center|quad|twin), two (two-tone), acc (glow/accent colour), cal (brake calipers),
              fin (shark fin + glow strips), spine (roof scoop), rearFins, horseshoe (grille), stripes
-   look2d    which 2D drawing to use when the device has no 3D (WebGL) support */
+   look2d    which 2D drawing to use when the device has no 3D (WebGL) support
+   shape.model  (optional) a professional 3D model file to use instead of the built-in one, e.g.
+             model: { url: 'assets/models/bolide.glb' }
+             options: scale (else it is sized to L), rotateY (radians, if it faces the wrong way), y (lift),
+             paint / tail / wheels: name patterns of the parts to repaint in the player's colour, light as
+             brake lights, and spin (defaults: 'paint|body|carpaint', 'tail|brake|rear_light', 'wheel|tyre|tire') */
 const CAR_LIST = [
   // ---------------- starter cars (free) ----------------
   {

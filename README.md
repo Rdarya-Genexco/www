@@ -40,6 +40,8 @@ If you add or rename game files, add them to the `FILES` list in `sw.js` so they
 
 Menu → **Multiplayer**: non-stop racing with every signed-in driver who's online. Everyone is on the same map at the same time; maps rotate every 5 minutes (`MP_MIN` in `js/game.js`) by the server clock. Each lap earns 2 points. Other players show as cars with name tags (you can't collide with them, since positions arrive slightly delayed), on the minimap and on the live leaderboard. A wrecked car is repaired on the spot.
 
+**Chat**: press T (or 💬) in a multiplayer race to type, or tap a quick reply; messages ride along with each player's position updates. **Friends**: drivers you race online appear under *Recent drivers* on the Multiplayer screen; *+ Add* makes them friends, whose online status (from `online/{uid}`, public or private room only, never the room code) shows with a Join button for public races. Friends sync with your account. **Bumping**: cars touching in multiplayer push apart with sparks; each player moves only their own car.
+
 **Private rooms**: from the Multiplayer screen, *Create private room* gives a 5-character code and an invite link (`?room=CODE`); friends type the code or open the link to race only each other (stored under `mp/room_CODE`). The same Realtime Database rules cover rooms.
 
 Positions go through the Firebase **Realtime Database** at `mp/{room}/{uid}` (about 8 updates a second per player; entries are removed automatically on disconnect). Realtime Database rules needed:
@@ -52,10 +54,24 @@ Positions go through the Firebase **Realtime Database** at `mp/{room}/{uid}` (ab
         ".read": "auth != null",
         "$uid": { ".write": "auth != null && auth.uid === $uid" }
       }
+    },
+    "online": {
+      ".read": "auth != null",
+      "$uid": { ".write": "auth != null && auth.uid === $uid" }
     }
   }
 }
 ```
+
+## Professional 3D car models
+
+Any car can use a real 3D model file instead of its built-in, code-generated body:
+
+1. Get a `.glb` model (Sketchfab, TurboSquid, CGTrader, or a 3D artist; check the licence allows use in a game, and that brand-name cars are licensed).
+2. Put it in `assets/models/`, for example `assets/models/bolide.glb`.
+3. In `js/cars.js`, add `model: { url: 'assets/models/bolide.glb' }` inside that car's `shape`.
+
+The game sizes the model to the car's length, sits it on the road, repaints the body parts in the player's chosen colour, uses the rear-light parts as brake lights and spins the wheels, matching parts by name (see the `shape.model` notes in `cars.js` for the options if a model names its parts differently or faces the wrong way). Until the file loads, or if it fails, the built-in model is used. Keep models light (under about 5 MB each) so phones load them quickly.
 
 ## Rendering
 

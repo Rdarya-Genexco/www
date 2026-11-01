@@ -93,6 +93,23 @@
         ><button data-k="N" aria-label="Nitro">Nitro</button>
       </div>
     </div>
+    <!-- multiplayer chat: message feed, chat button and the typing bar -->
+    <div id="chat" aria-live="polite"></div>
+    <button id="chatbtn" aria-label="Chat (T)" title="Chat (T)">💬</button>
+    <div id="chatbar" hidden>
+      <div id="chatq"></div>
+      <div class="row">
+        <input
+          id="chatin"
+          class="fld"
+          maxlength="80"
+          placeholder="Say something… (Enter to send)"
+          autocomplete="off"
+          aria-label="Chat message"
+        />
+        <button id="chatsend" class="btn">Send</button>
+      </div>
+    </div>
     <div id="ov"></div>
   </body>
 </html>

@@ -4,6 +4,12 @@
    updates arrive on the next launch. Online services (Firebase sign-in and saves) always go to the network. */
 const CACHE = 'worldwide-wheels-v1';
 const FILES = [
+  'js/vendor/three/addons/math/SimplexNoise.js',
+  'js/vendor/three/addons/shaders/PoissonDenoiseShader.js',
+  'js/vendor/three/addons/shaders/GTAOShader.js',
+  'js/vendor/three/addons/postprocessing/GTAOPass.js',
+  'js/vendor/three/addons/utils/BufferGeometryUtils.js',
+  'js/vendor/three/addons/loaders/GLTFLoader.js',
   './',
   'index.html',
   'manifest.json',

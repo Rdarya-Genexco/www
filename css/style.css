@@ -1472,3 +1472,120 @@ a.mb {
     width: 145px;
   }
 }
+
+/* multiplayer chat and friends */
+#chat,
+#chatbtn {
+  display: none;
+}
+body.mp.play #chat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: fixed;
+  left: 16px;
+  bottom: calc(240px + env(safe-area-inset-bottom, 0px));
+  max-width: min(420px, 70vw);
+  z-index: 3;
+  pointer-events: none;
+}
+#chat div {
+  padding: 4px 10px 3px;
+  border-radius: 10px;
+  background: rgba(19, 17, 58, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  transition: opacity 1s;
+}
+#chat div.old {
+  opacity: 0;
+}
+body.mp.play #chatbtn {
+  display: block;
+  position: fixed;
+  right: 16px;
+  top: calc(250px + env(safe-area-inset-top, 0px));
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 244, 224, 0.3);
+  background: rgba(19, 17, 58, 0.6);
+  font-size: 22px;
+  cursor: pointer;
+  z-index: 5;
+}
+#chatbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  width: min(560px, 92vw);
+  padding: 10px 12px 12px;
+  border-radius: 14px;
+  background: rgba(19, 17, 58, 0.88);
+  border: 1px solid rgba(255, 244, 224, 0.2);
+  z-index: 8;
+}
+#chatbar[hidden] {
+  display: none;
+}
+#chatq {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+#chatbar .row {
+  flex-wrap: nowrap;
+}
+#chatin {
+  flex: 1;
+  font-size: 18px;
+}
+#chatbar .btn {
+  font-size: 20px;
+  padding: 6px 16px 4px;
+}
+#ov ul.frl {
+  min-width: min(420px, 90vw);
+}
+#ov li.fr {
+  align-items: center;
+}
+#ov li.fr span:first-child i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  background: rgba(255, 244, 224, 0.3);
+  border: 0;
+}
+#ov li.fr.on span:first-child i {
+  background: #4dff88;
+  box-shadow: 0 0 8px #4dff88;
+}
+#ov li.fr small {
+  font-size: 0.65em;
+  opacity: 0.75;
+  margin-left: 6px;
+}
+@media (max-width: 1100px), (max-height: 760px) {
+  body.mp.play #chat {
+    bottom: calc(176px + env(safe-area-inset-bottom, 0px));
+  }
+  #chat div {
+    font-size: 15px;
+  }
+  body.mp.play #chatbtn {
+    top: calc(170px + env(safe-area-inset-top, 0px));
+  }
+}
+/* menu sections keep their size and the overlay scrolls, instead of squashing into each other */
+#ov > * {
+  flex-shrink: 0;
+}
