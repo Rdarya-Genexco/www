@@ -151,7 +151,7 @@ const CAR_LIST = [
     realName: 'Lamborghini Centenario',
     stats: { accel: 1.18, handling: 1.04, damage: 1.05 },
     desc: 'Angular V12 bull with brutal acceleration',
-    shape: { L: 4.7, W: 2.06, r: 0.14, hood: 0.38, roof: 0.98, deck: 0.6, ws: -0.85, rf: -0.15, rr: 0.3, rw: 0.95, flare: 0.08 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel' },  L: 4.7, W: 2.06, r: 0.14, hood: 0.38, roof: 0.98, deck: 0.6, ws: -0.85, rf: -0.15, rr: 0.3, rw: 0.95, flare: 0.08 },
     style: { sup: 1, wing: 2, lights: 'y', exhaust: 'center', acc: '#f2c418', cal: '#f2c418', rearFins: 1 },
   },
   {

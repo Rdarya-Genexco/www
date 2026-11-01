@@ -359,6 +359,20 @@ function start() {
     gltf.load(
       m.url,
       res => {
+        // wheels must turn about their own centre: models converted from other formats often keep every part
+        // positioned around the car's origin, so re-centre each wheel's geometry on its pivot
+        const wheelRe = new RegExp(m.wheels || 'wheel|tyre|tire', 'i'),
+          c = new THREE.Vector3();
+        res.scene.updateMatrixWorld(true);
+        res.scene.traverse(o => {
+          if (!o.isMesh || !wheelRe.test(o.name || '')) return;
+          o.geometry.computeBoundingBox();
+          o.geometry.boundingBox.getCenter(c);
+          if (c.length() > 1e-3) {
+            o.geometry = o.geometry.clone().translate(-c.x, -c.y, -c.z);
+            o.position.add(c.applyQuaternion(o.quaternion).multiply(o.scale));
+          }
+        });
         MODELS[m.url].scene = res.scene;
         modelVer++;
       },

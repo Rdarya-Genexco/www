@@ -2595,7 +2595,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         '<section class="card"><b>Mumbai Mayhem</b><small>Dodge rickshaws, cyclists, bullock carts, wandering cows and potholes. Your car is invincible here, but every hit slows you down.</small></section>' +
         '<section class="card"><b>Points</b><small>1st 25 · 2nd 15 · 3rd 10 · 4th 5. Spend them on upgrades and supercars in the Garage showroom. The Daily Challenge gives 20 points once a day.</small></section>' +
         '<section class="card"><b>Ghost car</b><small>In Time Trial your best lap on each map is recorded. Next time a see-through copy of your car drives it, so you can race yourself.</small></section>' +
-        '<section class="card"><b>Credits</b><small>Starter car models: Car Kit by Kenney (kenney.nl), CC0. 3D engine: Three.js.</small></section>' +
+        '<section class="card"><b>Credits</b><small>Starter car models: Car Kit by Kenney (kenney.nl), CC0. Lamborghini model: &quot;CAR Model&quot; by Ignition Labs (CC-BY) via Poly Pizza. 3D engine: Three.js.</small></section>' +
         '<section class="card"><b>Online save</b><small>Sign in with email to keep your drivers, points, league and settings on any device.</small></section>' +
         '</div>' +
         '<div class="row"><button class="btn" data-a="menu">Let\'s race</button><button class="btn alt" data-a="settings">Settings</button></div>',

@@ -1,0 +1,4 @@
+lamborghini-aventador.glb
+  "CAR Model" by Ignition Labs, via Poly Pizza (poly.pizza)
+  Licence: Creative Commons Attribution (CC-BY) https://creativecommons.org/licenses/by/3.0/
+  Used for the Toro V12 / Lamborghini slot; repainted in the player's colour in game.

@@ -4,6 +4,7 @@
    updates arrive on the next launch. Online services (Firebase sign-in and saves) always go to the network. */
 const CACHE = 'worldwide-wheels-v1';
 const FILES = [
+  'assets/models/poly-pizza/lamborghini-aventador.glb',
   'assets/models/kenney/Textures/colormap.png',
   'assets/models/kenney/truck.glb',
   'assets/models/kenney/van.glb',
