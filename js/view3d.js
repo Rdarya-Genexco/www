@@ -417,6 +417,94 @@ function start() {
     if (!own) RECOLOR.set(id, m);
     return m;
   }
+  /* signature details added on top of a reshaped base model, from the car's style in js/cars.js:
+     wings, tail light designs, exhausts, horseshoe grille, stripes, shark fin and glow strips, calipers */
+  function modelExtras(g, s, col, pm) {
+    const { L, W, r } = s,
+      f = -L / 2,
+      b = L / 2,
+      rz = b - 0.14,
+      ly = r + s.deck * 0.62,
+      acc =
+        s.acc &&
+        new THREE.MeshStandardMaterial({ color: s.acc, emissive: s.acc, emissiveIntensity: s.acc === '#f2c418' ? 0.25 : 1.6 });
+    // tail lights
+    if (s.lights === 'bar') g.add(box(W * 0.78, 0.045, 0.04, M.tail, 0, ly + 0.05, rz));
+    else if (s.lights === 'thin') g.add(box(W * 0.86, 0.035, 0.04, M.tail, 0, ly + 0.06, rz));
+    else if (s.lights === 'quad' || s.lights === 'ring')
+      for (const x of [-0.7, -0.45, 0.45, 0.7]) {
+        const l =
+          s.lights === 'ring'
+            ? new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.022, 8, 20), M.tail)
+            : cyl(0.08, 0.08, 0.04, M.tail, 16).rotateX(Math.PI / 2);
+        l.position.set(x, ly, rz);
+        g.add(l);
+      }
+    else if (s.lights === 'x')
+      for (const sx of [-1, 1])
+        for (const a of [0.6, -0.6]) {
+          const xb = box(0.34, 0.035, 0.04, M.tail, sx * 0.6, ly, rz);
+          xb.rotation.z = a;
+          g.add(xb);
+        }
+    // exhausts
+    const ex = s.exhaust === 'quad' ? [-0.4, -0.28, 0.28, 0.4] : s.exhaust === 'twin' ? [-0.13, 0.13] : [0];
+    for (const x of ex) {
+      const er = ex.length === 2 ? 0.08 : ex.length === 1 ? 0.11 : 0.05,
+        e = cyl(er, er, 0.18, M.chrome, 16);
+      e.rotation.x = Math.PI / 2;
+      e.position.set(x, s.exhaust === 'twin' ? r + s.deck * 0.55 : r + 0.15, rz);
+      g.add(e);
+    }
+    // rear wing
+    if (s.wing) {
+      const wy = r + s.deck + (s.wing === 3 ? 0.5 : s.wing === 2 ? 0.36 : 0.2);
+      for (const sx of [-0.45, 0.45]) g.add(box(0.05, wy - r - s.deck + 0.1, 0.1, M.black, sx, (wy + r + s.deck) / 2, b - 0.4));
+      g.add(rbox(W * (s.wing === 3 ? 1.02 : 0.9), 0.05, 0.4, s.wing === 3 ? pm : M.black, 0, wy, b - 0.4, 0.03));
+    }
+    // horseshoe grille on the nose
+    if (s.horseshoe) {
+      const gy = r + s.hood * 0.38,
+        gz = f + 0.14;
+      g.add(blob(0.2, 1, 1.15, 0.12, M.black, 0, gy, gz + 0.02));
+      const hs = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.03, 8, 28, Math.PI * 1.4), M.chrome);
+      hs.rotation.z = -Math.PI * 0.2;
+      hs.scale.y = 1.15;
+      hs.position.set(0, gy, gz);
+      g.add(hs);
+    }
+    // racing stripes over the hood and roof
+    if (s.stripes)
+      for (const sx of [-1, 1]) g.add(box(0.16, 0.012, L * 0.62, paint(s.stripes), sx * 0.3, r + s.roof + 0.004, -L * 0.05));
+    // shark fin and glowing lower strips
+    if (s.fin) {
+      g.add(taper(0.04, 0.02, 0.24, 2.0, 1.4, M.black, 0, r + s.deck * 0.75, 1.0, 0.25));
+      if (acc) for (const sx of [-1, 1]) g.add(box(0.02, 0.025, L * 0.5, acc, sx * (W / 2 + 0.03), r + 0.14, -0.2));
+    }
+    // roof scoop (Divo)
+    if (s.spine) g.add(taper(0.06, 0.03, 0.16, 1.2, 0.9, M.black, 0, r + s.roof + 0.06, 0.2, 0.2));
+    // glowing C-curve on each side (Chiron)
+    if (s.two && acc)
+      for (const sx of [-1, 1]) {
+        const c = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 6, 24, Math.PI * 1.15), acc);
+        c.rotation.set(0, Math.PI / 2, Math.PI * 0.42);
+        c.position.set(sx * (W / 2 + 0.02), r + 0.42, -0.25);
+        g.add(c);
+      }
+    // coloured brake calipers inside the wheels
+    if (s.cal) {
+      const cm = flat(s.cal),
+        wx = W / 2 - 0.2,
+        wz = L / 2 - 0.85;
+      for (const [x, z] of [
+        [-wx, -wz],
+        [wx, -wz],
+        [-wx, wz],
+        [wx, wz],
+      ])
+        g.add(box(0.05, 0.18, 0.16, cm, x, 0.42, z + 0.06));
+    }
+  }
   function makeModelCar(src, s, col, live, own) {
     const m = s.model,
       g = new THREE.Group(),
@@ -452,13 +540,17 @@ function start() {
     const box = new THREE.Box3().setFromObject(car),
       size = box.getSize(new THREE.Vector3()),
       k = m.scale || s.L / Math.max(size.x, size.z);
-    car.scale.multiplyScalar(k);
+    if (m.fit)
+      // base model reshaped to this car: its own length, width and height from js/cars.js
+      car.scale.set(s.W / size.x, (s.r + s.roof) / size.y, s.L / size.z);
+    else car.scale.multiplyScalar(k);
     car.rotation.y = m.rotateY != null ? m.rotateY : 0;
     const b2 = new THREE.Box3().setFromObject(car);
     car.position.y -= b2.min.y - (m.y || 0);
     car.position.x -= (b2.min.x + b2.max.x) / 2;
     car.position.z -= (b2.min.z + b2.max.z) / 2;
     g.add(car);
+    if (m.fit) modelExtras(g, s, col, pm);
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(s.W * 1.3, s.L * 1.1), SHADOW);
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.02;
