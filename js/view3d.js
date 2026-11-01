@@ -473,16 +473,11 @@ function start() {
       hs.position.set(0, gy, gz);
       g.add(hs);
     }
-    // racing stripes over the hood and roof
-    if (s.stripes)
-      for (const sx of [-1, 1]) g.add(box(0.16, 0.012, L * 0.62, paint(s.stripes), sx * 0.3, r + s.roof + 0.004, -L * 0.05));
     // shark fin and glowing lower strips
     if (s.fin) {
       g.add(taper(0.04, 0.02, 0.24, 2.0, 1.4, M.black, 0, r + s.deck * 0.75, 1.0, 0.25));
       if (acc) for (const sx of [-1, 1]) g.add(box(0.02, 0.025, L * 0.5, acc, sx * (W / 2 + 0.03), r + 0.14, -0.2));
     }
-    // roof scoop (Divo)
-    if (s.spine) g.add(taper(0.06, 0.03, 0.16, 1.2, 0.9, M.black, 0, r + s.roof + 0.06, 0.2, 0.2));
     // glowing C-curve on each side (Chiron)
     if (s.two && acc)
       for (const sx of [-1, 1]) {
