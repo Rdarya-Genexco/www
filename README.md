@@ -40,6 +40,8 @@ If you add or rename game files, add them to the `FILES` list in `sw.js` so they
 
 Menu → **Multiplayer**: non-stop racing with every signed-in driver who's online. Everyone is on the same map at the same time; maps rotate every 5 minutes (`MP_MIN` in `js/game.js`) by the server clock. Each lap earns 2 points. Other players show as cars with name tags (you can't collide with them, since positions arrive slightly delayed), on the minimap and on the live leaderboard. A wrecked car is repaired on the spot.
 
+**Private rooms**: from the Multiplayer screen, *Create private room* gives a 5-character code and an invite link (`?room=CODE`); friends type the code or open the link to race only each other (stored under `mp/room_CODE`). The same Realtime Database rules cover rooms.
+
 Positions go through the Firebase **Realtime Database** at `mp/{room}/{uid}` (about 8 updates a second per player; entries are removed automatically on disconnect). Realtime Database rules needed:
 
 ```

@@ -1356,3 +1356,15 @@ a.mb {
 .mb.dl b {
   color: var(--glow);
 }
+.roomcode {
+  font-size: clamp(56px, 12vw, 110px);
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  color: var(--glow);
+  text-shadow: 0 0 30px rgba(255, 122, 61, 0.5);
+}
+.btn.alt:hover:not(:disabled) {
+  background: rgba(255, 244, 224, 0.15);
+  color: var(--ink);
+}

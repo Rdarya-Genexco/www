@@ -1297,6 +1297,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       if (e.code === 'Enter') {
         if (e.target.id === 'nm') createDriver();
         else if (e.target.id === 'cpw') cloudGo('in');
+        else if (e.target.id === 'rcode') $('ov').querySelector('[data-a=mpjoin]').click();
       }
       return;
     }
@@ -1680,16 +1681,64 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   const mpSlot = () => Math.floor(mpNow() / (MP_MIN * 60000)); // which rotation we're in (same for everyone)
   const mpMapNow = () => MP_ORDER[mpSlot() % MP_ORDER.length];
   const mpLeft = () => MP_MIN * 60000 - (mpNow() % (MP_MIN * 60000));
-  function startMp() {
+  /* private rooms: a short code (no look-alike letters) that friends type in or get from an invite link */
+  let mpRoom = 'world';
+  const urlRoom = (new URLSearchParams(location.search).get('room') || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+  let urlRoomUsed = false;
+  const newCode = () =>
+    Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[(Math.random() * 31) | 0]).join('');
+  // invite links always use the public site, so they work even when sent from the Windows app
+  const inviteLink = code => 'https://rdarya-genexco.github.io/www/?room=' + code;
+  function showMp(code) {
     if (!cUser || !window.cloud || !window.cloud.mp) {
       cMsg = 'Sign in to race online with other drivers.';
       return showCloud();
     }
+    ovSet(
+      '<h1 class="sm">Multiplayer</h1><p>Non-stop racing · maps rotate every ' +
+        MP_MIN +
+        ' minutes · +2 pts a lap</p>' +
+        '<div class="menu">' +
+        '<button class="mb" data-a="mpgo" data-v="world"><b>Public race</b><small>Race everyone who is online right now</small></button>' +
+        '<button class="mb" data-a="mpnew"><b>Create private room</b><small>Get a code to share, then race only your friends</small></button>' +
+        '</div>' +
+        '<div class="sec">Join a private room</div>' +
+        '<div class="row"><input id="rcode" class="fld" maxlength="6" placeholder="Room code" autocomplete="off" aria-label="Room code" value="' +
+        esc(code || '') +
+        '" style="width:min(220px,100%);text-transform:uppercase;letter-spacing:.15em"><button class="btn" data-a="mpjoin">Join</button></div>' +
+        (cMsg ? '<span class="hint err" role="alert">' + esc(cMsg) + '</span>' : '') +
+        '<button class="btn alt" data-a="menu">Back</button>',
+    );
+    cMsg = '';
+  }
+  function showRoom(code) {
+    ovSet(
+      '<h1 class="sm">Private room</h1><p>Share this code or link with your friends:</p>' +
+        '<div class="roomcode">' +
+        code +
+        '</div>' +
+        '<div class="row"><button class="btn alt" data-a="mpcopy" data-v="' +
+        code +
+        '">Copy invite link</button><button class="btn" data-a="mpgo" data-v="' +
+        code +
+        '">Start racing</button></div>' +
+        '<span class="hint" id="copied"></span>' +
+        '<button class="lnk" data-a="mp">Back</button>',
+    );
+  }
+  function startMp(room = 'world') {
+    if (!cUser || !window.cloud || !window.cloud.mp) {
+      cMsg = 'Sign in to race online with other drivers.';
+      return showCloud();
+    }
+    mpRoom = room;
     mpOn = true;
     loadMap(mpMapNow());
     mpMap = mapSel;
     mpBest = 0;
-    window.cloud.mp.join('world', (all, uid) => {
+    window.cloud.mp.join(room === 'world' ? 'world' : 'room_' + room, (all, uid) => {
       mpPlayers = all;
       mpUid = uid;
     });
@@ -2401,6 +2450,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   }
   function showMenu() {
     stopMp();
+    if (urlRoom && !urlRoomUsed && me && cUser) {
+      urlRoomUsed = true;
+      return showMp(urlRoom);
+    }
     if (state === 'done' && (pFin || wreck) && me) settle();
     else reloadStore();
     wreck = false;
@@ -2479,7 +2532,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         lapsSel +
         (lapsSel === 1 ? ' lap' : ' laps') +
         ' · 1st 25 · 2nd 15 · 3rd 10 · 4th 5 pts</small></button>' +
-        '<button class="mb" data-a="mp"><b>Multiplayer</b><small>Race non-stop with other drivers online · maps rotate every ' +
+        '<button class="mb" data-a="mp"><b>Multiplayer</b><small>Race other drivers online or friends in a private room · maps rotate every ' +
         MP_MIN +
         ' min · +2 pts a lap</small></button>' +
         '<button class="mb" data-a="tt"><b>Time Trial</b><small>Solo run, no rivals · best ' +
@@ -2906,8 +2959,22 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     const a = b.dataset.a,
       v = b.dataset.v;
     if (a === 'bots' || a === 'tt') begin(a);
-    else if (a === 'mp') startMp();
-    else if (a === 'again') begin(mode);
+    else if (a === 'mp') showMp();
+    else if (a === 'mpgo') startMp(v);
+    else if (a === 'mpnew') showRoom(newCode());
+    else if (a === 'mpjoin') {
+      const code = (($('rcode') || {}).value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (code.length < 4) {
+        cMsg = 'Room codes are 4 to 6 letters or numbers.';
+        showMp(code);
+      } else startMp(code);
+    } else if (a === 'mpcopy') {
+      const link = inviteLink(v),
+        done = () => ($('copied').textContent = 'Copied: ' + link);
+      if (navigator.clipboard)
+        navigator.clipboard.writeText(link).then(done, () => ($('copied').textContent = link));
+      else $('copied').textContent = link;
+    } else if (a === 'again') begin(mode);
     else if (a === 'garage') showGarage();
     else if (a === 'league') showLeague();
     else if (a === 'menu') showMenu();
@@ -3407,9 +3474,10 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     let g = '';
     if (mode === 'mp')
       g =
+        (mpRoom !== 'world' ? 'Room ' + mpRoom + ' · ' : '') +
         MAPS[mapSel].name +
         ' · ' +
-        (rk.length > 1 ? rk.length + ' drivers online' : 'waiting for other drivers…');
+        (rk.length > 1 ? rk.length + ' drivers' : 'waiting for other drivers…');
     else if (i > 0 && !rk[i].fin)
       g = '+' + (((Math.min(rk[0].d, tot) - rk[i].d) / tot) * 100).toFixed(1) + '% behind';
     else if (i === 0 && rk.length > 1 && !rk[i].fin)
