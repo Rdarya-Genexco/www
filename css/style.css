@@ -1368,3 +1368,107 @@ a.mb {
   background: rgba(255, 244, 224, 0.15);
   color: var(--ink);
 }
+
+/* compact race display for smaller or shorter screens (desktop layout; touch layout has its own) */
+@media (max-width: 1100px), (max-height: 760px) {
+  body:not(.tui) #spd {
+    width: 150px;
+    height: 150px;
+    left: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  body:not(.tui) #spd #kmh {
+    top: 82px;
+    font-size: 36px;
+  }
+  body:not(.tui) #spd > span {
+    top: 117px;
+    font-size: 11px;
+  }
+  #tl,
+  #tr {
+    padding: 7px 10px;
+    border-radius: 10px;
+  }
+  #tl {
+    left: 10px;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+  #tr {
+    right: 10px;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+  #tl b,
+  #tr b {
+    font-size: 24px;
+  }
+  #tl span,
+  #tr span {
+    font-size: 15px;
+  }
+  #mm {
+    width: 120px;
+    margin-top: 5px;
+  }
+  #st div {
+    font-size: 15px;
+    gap: 6px;
+  }
+  #st i {
+    width: 9px;
+    height: 9px;
+  }
+  #nit {
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    width: 180px;
+    padding: 8px 11px 10px;
+    border-radius: 10px;
+  }
+  #nit span {
+    font-size: 15px;
+  }
+  #nit i {
+    height: 7px;
+  }
+  .dmt {
+    margin-top: 3px;
+  }
+  #mu {
+    height: 34px;
+    font-size: 16px;
+    padding: 1px 12px 0;
+    top: calc(8px + env(safe-area-inset-top, 0px));
+  }
+}
+/* very small windows */
+@media (max-width: 640px), (max-height: 520px) {
+  body:not(.tui) #spd {
+    width: 120px;
+    height: 120px;
+  }
+  body:not(.tui) #spd #kmh {
+    top: 64px;
+    font-size: 28px;
+  }
+  body:not(.tui) #spd > span {
+    top: 93px;
+    font-size: 9px;
+  }
+  #tl b,
+  #tr b {
+    font-size: 19px;
+  }
+  #tl span,
+  #tr span,
+  #st div,
+  #nit span {
+    font-size: 13px;
+  }
+  #mm {
+    width: 90px;
+  }
+  #nit {
+    width: 145px;
+  }
+}
