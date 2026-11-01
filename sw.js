@@ -4,6 +4,12 @@
    updates arrive on the next launch. Online services (Firebase sign-in and saves) always go to the network. */
 const CACHE = 'worldwide-wheels-v1';
 const FILES = [
+  'assets/models/kenney/Textures/colormap.png',
+  'assets/models/kenney/truck.glb',
+  'assets/models/kenney/van.glb',
+  'assets/models/kenney/hatchback-sports.glb',
+  'assets/models/kenney/sedan-sports.glb',
+  'assets/models/kenney/sedan.glb',
   'js/vendor/three/addons/math/SimplexNoise.js',
   'js/vendor/three/addons/shaders/PoissonDenoiseShader.js',
   'js/vendor/three/addons/shaders/GTAOShader.js',

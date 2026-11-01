@@ -95,7 +95,7 @@ const CAR_LIST = [
     realName: 'Generic sports coupe',
     stats: { accel: 1, handling: 1, damage: 1 },
     desc: 'Balanced all-rounder',
-    shape: { L: 4.4, W: 1.86, r: 0.22, hood: 0.72, roof: 1.3, deck: 0.8, ws: -0.75, rf: -0.1, rr: 0.6, rw: 1.35 },
+    shape: { model: { url: 'assets/models/kenney/sedan.glb', recolor: '#e96247', rotateY: 3.14159 }, L: 4.4, W: 1.86, r: 0.22, hood: 0.72, roof: 1.3, deck: 0.8, ws: -0.75, rf: -0.1, rr: 0.6, rw: 1.35 },
     style: {},
   },
   {
@@ -104,7 +104,7 @@ const CAR_LIST = [
     realName: 'Generic hot hatch',
     stats: { accel: 1.1, handling: 1.12, damage: 1 },
     desc: 'Quick off the line and agile, a little slower flat out',
-    shape: { L: 3.95, W: 1.78, r: 0.24, hood: 0.74, roof: 1.42, deck: 0.95, ws: -0.75, rf: -0.15, rr: 1.15, rw: 1.75 },
+    shape: { model: { url: 'assets/models/kenney/hatchback-sports.glb', recolor: '#47b17e', rotateY: 3.14159 }, L: 3.95, W: 1.78, r: 0.24, hood: 0.74, roof: 1.42, deck: 0.95, ws: -0.75, rf: -0.15, rr: 1.15, rw: 1.75 },
     style: {},
   },
   {
@@ -113,7 +113,7 @@ const CAR_LIST = [
     realName: 'Generic 80s wedge sports car',
     stats: { accel: 0.95, handling: 0.9, damage: 1 },
     desc: 'Highest top speed of the starters, but heavy in the bends',
-    shape: { L: 4.5, W: 1.94, r: 0.2, hood: 0.6, roof: 1.12, deck: 0.78, ws: -0.55, rf: 0.15, rr: 0.7, rw: 1.6 },
+    shape: { model: { url: 'assets/models/kenney/sedan-sports.glb', recolor: '#ee6445', rotateY: 3.14159 }, L: 4.5, W: 1.94, r: 0.2, hood: 0.6, roof: 1.12, deck: 0.78, ws: -0.55, rf: 0.15, rr: 0.7, rw: 1.6 },
     style: { wing: 1 },
   },
   {
@@ -122,7 +122,7 @@ const CAR_LIST = [
     realName: 'Generic minivan',
     stats: { accel: 0.9, handling: 0.95, damage: 0.5 },
     desc: 'Slow and steady, takes half damage',
-    shape: { L: 4.7, W: 1.92, r: 0.28, hood: 0.9, roof: 1.95, deck: 1.4, ws: -1.65, rf: -1.05, rr: 2.15, rw: 2.3 },
+    shape: { model: { url: 'assets/models/kenney/van.glb', recolor: '#5f76cb', rotateY: 3.14159 }, L: 4.7, W: 1.92, r: 0.28, hood: 0.9, roof: 1.95, deck: 1.4, ws: -1.65, rf: -1.05, rr: 2.15, rw: 2.3 },
     style: {},
   },
   {
@@ -140,7 +140,7 @@ const CAR_LIST = [
     realName: 'Generic pickup truck',
     stats: { accel: 0.92, handling: 1, damage: 0.65 },
     desc: 'Tough and steady, takes less damage',
-    shape: { L: 5.0, W: 1.96, r: 0.34, hood: 0.86, roof: 1.62, deck: 0.92, ws: -0.95, rf: -0.45, rr: 0.35, rw: 0.45, bed: 1 },
+    shape: { model: { url: 'assets/models/kenney/truck.glb', recolor: '#40aa7b', rotateY: 3.14159 }, L: 5.0, W: 1.96, r: 0.34, hood: 0.86, roof: 1.62, deck: 0.92, ws: -0.95, rf: -0.45, rr: 0.35, rw: 0.45, bed: 1 },
     style: {},
   },
 

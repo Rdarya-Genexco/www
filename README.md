@@ -73,6 +73,10 @@ Any car can use a real 3D model file instead of its built-in, code-generated bod
 
 The game sizes the model to the car's length, sits it on the road, repaints the body parts in the player's chosen colour, uses the rear-light parts as brake lights and spins the wheels, matching parts by name (see the `shape.model` notes in `cars.js` for the options if a model names its parts differently or faces the wrong way). Until the file loads, or if it fails, the built-in model is used. Keep models light (under about 5 MB each) so phones load them quickly.
 
+### Models in use
+
+The starter Coupe, Wedge, Hatch, Van and Pickup (and the rival bots driving those bodies) use models from **Kenney's Car Kit** (www.kenney.nl, CC0 public domain; see `assets/models/kenney/License.txt`). Kenney cars share one colour sheet, so `recolor` names each model's paint colour and only those pixels are swapped for the player's colour; `rotateY: 3.14159` turns them to face the game's forward direction. The Roadster and the supercars use the built-in models.
+
 ## Rendering
 
 The game runs in 3D through WebGL. On devices without WebGL, `view3d.js` never starts and `game.js` keeps drawing the original 2D pseudo-3D road, so the game always works.

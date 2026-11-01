@@ -367,6 +367,42 @@ function start() {
     );
     return null;
   }
+  /* recolour for models that share one colour sheet (like Kenney's): only the pixels matching the model's
+     paint colour (m.recolor) are swapped for the player's colour, keeping their shading; windows, lights and
+     trim stay as drawn */
+  const RECOLOR = new Map();
+  function recolorMat(src, key, col, own) {
+    const id = src.uuid + key + col;
+    if (!own && RECOLOR.has(id)) return RECOLOR.get(id);
+    const m = src.clone(),
+      paintCol = { value: new THREE.Color(col) },
+      keyCol = { value: new THREE.Color(key) };
+    m.roughness = 0.45;
+    m.metalness = 0.15;
+    m.onBeforeCompile = sh => {
+      sh.uniforms.paintCol = paintCol;
+      sh.uniforms.keyCol = keyCol;
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform vec3 paintCol;uniform vec3 keyCol;')
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+          {
+            vec3 tc = diffuseColor.rgb;
+            float mx = max(tc.r, max(tc.g, tc.b)), mn = min(tc.r, min(tc.g, tc.b));
+            float sat = (mx - mn) / max(mx, 1e-4);
+            if (sat > 0.3 && dot(normalize(tc + 1e-4), normalize(keyCol)) > 0.985) {
+              float k = dot(tc, vec3(0.2126, 0.7152, 0.0722)) / max(dot(keyCol, vec3(0.2126, 0.7152, 0.0722)), 1e-3);
+              diffuseColor.rgb = paintCol * k;
+            }
+          }`,
+        );
+    };
+    m.customProgramCacheKey = () => 'recolor';
+    m.userData.paintCol = paintCol.value;
+    if (!own) RECOLOR.set(id, m);
+    return m;
+  }
   function makeModelCar(src, s, col, live, own) {
     const m = s.model,
       g = new THREE.Group(),
@@ -376,12 +412,21 @@ function start() {
       paintRe = new RegExp(m.paint || 'paint|body|carpaint', 'i'),
       tailRe = new RegExp(m.tail || 'tail|brake|rear_?light', 'i'),
       wheelRe = new RegExp(m.wheels || 'wheel|tyre|tire', 'i');
-    let shell = null;
+    let shell = null,
+      recol = null;
     car.traverse(o => {
       if (!o.isMesh) return;
       o.castShadow = true;
       const name = (o.name || '') + ' ' + ((o.material && o.material.name) || '');
-      if (paintRe.test(name)) {
+      if (m.recolor) {
+        // shared colour sheet: swap only the paint pixels
+        o.material = recolorMat(o.material, m.recolor, col, own);
+        recol = o.material;
+        if (/body/i.test(o.name || '')) {
+          if (own) o.geometry = o.geometry.clone();
+          if (!shell) shell = o;
+        }
+      } else if (paintRe.test(name)) {
         // your colour on the body panels; the player's copy gets its own geometry so it can dent
         o.material = pm;
         if (own) o.geometry = o.geometry.clone();
@@ -404,12 +449,14 @@ function start() {
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.02;
     g.add(shadow);
+    // for recoloured models, "the paint" that scuffs with damage is the swapped-in colour
+    const paintRef = recol ? { color: recol.userData.paintCol, roughness: 0.45, clearcoat: 0 } : pm;
     Object.assign(g.userData, {
       tail,
       shell: shell || { geometry: new THREE.BufferGeometry() },
-      paint: pm,
-      base: pm.color.clone(),
-      rough: pm.roughness,
+      paint: paintRef,
+      base: paintRef.color.clone(),
+      rough: paintRef.roughness,
       size: [s.L, s.W, s.r, s.hood],
     });
     g.scale.setScalar(CAR);
