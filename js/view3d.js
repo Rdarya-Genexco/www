@@ -419,7 +419,17 @@ function start() {
   }
   /* signature details added on top of a reshaped base model, from the car's style in js/cars.js:
      wings, tail light designs, exhausts, horseshoe grille, stripes, shark fin and glow strips, calipers */
-  function modelExtras(g, s, col, pm) {
+  function modelExtras(g, s, col, pm, car) {
+    // where a ray from outside first meets the body (falls back to the box edge if it misses)
+    g.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster(),
+      surf = (o, d, fb) => {
+        ray.set(o, d);
+        const h = ray.intersectObject(car, true).find(h => !h.object.userData.spin);
+        return h ? h.point : fb;
+      },
+      backZ = (x, y) => surf(new THREE.Vector3(x, y, 9), new THREE.Vector3(0, 0, -1), { z: s.L / 2 - 0.3 }).z + 0.015,
+      sideX = (sx, y, z) => surf(new THREE.Vector3(sx * 9, y, z), new THREE.Vector3(-sx, 0, 0), { x: sx * s.W / 2 }).x;
     const { L, W, r } = s,
       f = -L / 2,
       b = L / 2,
@@ -429,21 +439,21 @@ function start() {
         s.acc &&
         new THREE.MeshStandardMaterial({ color: s.acc, emissive: s.acc, emissiveIntensity: s.acc === '#f2c418' ? 0.25 : 1.6 });
     // tail lights
-    if (s.lights === 'bar') g.add(box(W * 0.78, 0.045, 0.04, M.tail, 0, ly + 0.05, rz));
-    else if (s.lights === 'thin') g.add(box(W * 0.86, 0.035, 0.04, M.tail, 0, ly + 0.06, rz));
+    if (s.lights === 'bar') g.add(box(W * 0.78, 0.045, 0.04, M.tail, 0, ly + 0.05, backZ(0, ly + 0.05)));
+    else if (s.lights === 'thin') g.add(box(W * 0.86, 0.035, 0.04, M.tail, 0, ly + 0.06, backZ(0, ly + 0.06)));
     else if (s.lights === 'quad' || s.lights === 'ring')
       for (const x of [-0.7, -0.45, 0.45, 0.7]) {
         const l =
           s.lights === 'ring'
             ? new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.022, 8, 20), M.tail)
             : cyl(0.08, 0.08, 0.04, M.tail, 16).rotateX(Math.PI / 2);
-        l.position.set(x, ly, rz);
+        l.position.set(x, ly, backZ(x, ly));
         g.add(l);
       }
     else if (s.lights === 'x')
       for (const sx of [-1, 1])
         for (const a of [0.6, -0.6]) {
-          const xb = box(0.34, 0.035, 0.04, M.tail, sx * 0.6, ly, rz);
+          const xb = box(0.34, 0.035, 0.04, M.tail, sx * 0.5, ly, backZ(sx * 0.5, ly));
           xb.rotation.z = a;
           g.add(xb);
         }
@@ -453,7 +463,8 @@ function start() {
       const er = ex.length === 2 ? 0.08 : ex.length === 1 ? 0.11 : 0.05,
         e = cyl(er, er, 0.18, M.chrome, 16);
       e.rotation.x = Math.PI / 2;
-      e.position.set(x, s.exhaust === 'twin' ? r + s.deck * 0.55 : r + 0.15, rz);
+      const ey = s.exhaust === 'twin' ? r + s.deck * 0.55 : r + 0.15;
+      e.position.set(x, ey, backZ(x, ey) - 0.05);
       g.add(e);
     }
     // rear wing
@@ -476,7 +487,12 @@ function start() {
     // shark fin and glowing lower strips
     if (s.fin) {
       g.add(taper(0.04, 0.02, 0.24, 2.0, 1.4, M.black, 0, r + s.deck * 0.75, 1.0, 0.25));
-      if (acc) for (const sx of [-1, 1]) g.add(box(0.02, 0.025, L * 0.5, acc, sx * (W / 2 + 0.03), r + 0.14, -0.2));
+      if (acc)
+        for (const sx of [-1, 1]) {
+          const y = r + 0.2,
+            x = Math.max(...[-0.9, -0.2, 0.5].map(z => sx * sideX(sx, y, z)));
+          g.add(box(0.02, 0.025, L * 0.36, acc, sx * (x + 0.01), y, -0.2));
+        }
     }
     // glowing C-curve on each side (Chiron)
     if (s.two && acc)
@@ -593,7 +609,7 @@ function start() {
     car.position.x -= (b2.min.x + b2.max.x) / 2;
     car.position.z -= (b2.min.z + b2.max.z) / 2;
     g.add(car);
-    if (m.fit) modelExtras(g, s, col, pm);
+    if (m.fit) modelExtras(g, s, col, pm, car);
     if (m.fit && s.stripes) bodyStripes(g, car, s);
     const shadow = new THREE.Mesh(new THREE.PlaneGeometry(s.W * 1.3, s.L * 1.1), SHADOW);
     shadow.rotation.x = -Math.PI / 2;
