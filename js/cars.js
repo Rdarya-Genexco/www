@@ -6,7 +6,7 @@
 /* Show the real-world names (realName) in the game instead of the made-up ones (name).
    Off by default: real car brand names are trademarks, so publishing a game that uses them without a
    licence can get it taken down. Turn on at your own risk, e.g. for a private build. */
-const USE_REAL_NAMES = true;
+const USE_REAL_NAMES = false;
 
 /* Speed limits in km/h. Nothing in the game goes faster than MAX_KMH, not even with upgrades or nitro. */
 const MAX_KMH = 300;
