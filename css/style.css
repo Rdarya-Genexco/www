@@ -1676,12 +1676,44 @@ body.mp.play #chatbtn {
     order: 0;
   }
 }
-/* landscape phone: keep the middle clear so you can see your car */
+/* landscape with touch controls (phones, tablets, touch laptops): keep the middle clear so you can see your car */
 @media (max-height: 520px) and (orientation: landscape) {
   body.tui #spd {
     transform: translateX(-50%) scale(0.5);
     transform-origin: top center;
   }
+}
+@media (min-height: 521px) and (max-height: 900px) and (orientation: landscape) {
+  body.tui #spd {
+    transform: translateX(-50%) scale(0.95);
+    transform-origin: top center;
+  }
+}
+@media (max-height: 900px) and (orientation: landscape) {
+  body.tui #toast {
+    top: 30%;
+  }
+  body.tui #nit,
+  body.joy #nit {
+    left: auto;
+    right: calc(14px + env(safe-area-inset-right, 0px));
+    transform: none;
+    top: calc(170px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
+  body.tui #mu {
+    left: auto;
+    right: calc(14px + env(safe-area-inset-right, 0px));
+    transform: none;
+    top: calc(300px + env(safe-area-inset-top, 0px));
+  }
+  body.mp.play #chatbtn {
+    top: auto;
+    right: calc(14px + env(safe-area-inset-right, 0px));
+    bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
   body.tui #tl,
   body.tui #tr {
     padding: 5px 9px;
