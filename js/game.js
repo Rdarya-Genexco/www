@@ -1,5 +1,5 @@
-/* Race songs: played in order as a playlist, each one to the end, then loops */
-const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/music/song-3.mp3'];
+/* no recorded songs (removed for copyright): the game plays its own synth tune instead */
+const SONGS = [];
 (() => {
   const $ = id => document.getElementById(id);
   const cv = $('c'),
@@ -1545,7 +1545,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   }
   function musicTick() {
     if (!ac) return;
-    if (musicOn && !muted && state === 'menu' && sp.paused) {
+    if (musicOn && !muted && !document.hidden && (!SONGS.length || (state === 'menu' && sp.paused))) {
       while (mNext < ac.currentTime + 0.3) {
         const s = mStep % 16;
         note(MEL[s], mNext, 0.2, 'triangle', 0.9);
@@ -1571,6 +1571,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     syncSong();
   };
   function syncSong() {
+    if (!SONGS.length) return;
     if (document.hidden) {
       sp.pause();
       return;

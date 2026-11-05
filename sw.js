@@ -2,7 +2,7 @@
    On install it saves the whole game (code, 3D engine, music, icons). After that every request for a game
    file is answered from the saved copy straight away, while a fresh copy is fetched in the background, so
    updates arrive on the next launch. Online services (Firebase sign-in and saves) always go to the network. */
-const CACHE = 'worldwide-wheels-v1';
+const CACHE = 'worldwide-wheels-v2';
 const FILES = [
   'assets/models/poly-pizza/lamborghini-aventador.glb',
   'assets/models/kenney/Textures/colormap.png',
@@ -39,9 +39,6 @@ const FILES = [
   'js/vendor/three/addons/shaders/CopyShader.js',
   'js/vendor/three/addons/shaders/OutputShader.js',
   'js/vendor/three/addons/geometries/RoundedBoxGeometry.js',
-  'assets/music/song-1.mp3',
-  'assets/music/song-2.mp3',
-  'assets/music/song-3.mp3',
   'icons/apple-touch-icon.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

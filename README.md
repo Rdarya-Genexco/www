@@ -14,7 +14,6 @@ js/view3d.js        3D renderer (Three.js): builds the world from game.js's trac
                     draws cars, scenery, lighting, shadows and bloom every frame
 js/vendor/three/    Three.js r160 (MIT) bundled locally, loaded through the import map in index.html
 js/cloud.js         online saves (Firebase email/password + Firestore)
-assets/music/       race playlist (played in order, then loops)
 ```
 
 ## Running it
@@ -152,4 +151,4 @@ Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds 
 
 ## One-file version
 
-`python3 tools/build-single.py` (needs `npm i esbuild`) writes `dist/index.html`: the whole game in a single ~10 MB file, with the code, styles, Three.js, car models and music packed inside. Open it straight from your files or host it anywhere. Sign-in, cloud saves, multiplayer and the web fonts still need the internet; everything else works offline.
+`python3 tools/build-single.py` (needs `npm i esbuild`) writes `dist/index.html`: the whole game in a single ~10 MB file, with the code, styles, Three.js, car models packed inside. Open it straight from your files or host it anywhere. Sign-in, cloud saves, multiplayer and the web fonts still need the internet; everything else works offline.
