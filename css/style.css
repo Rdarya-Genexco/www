@@ -1592,3 +1592,162 @@ body.mp.play #chatbtn {
 #ov > * {
   flex-shrink: 0;
 }
+
+/* =================== phone layouts for the touch controls =================== */
+#joy {
+  flex-shrink: 0;
+}
+/* portrait phone: small dial and dashboard, roomy round joystick, smaller buttons */
+@media (max-width: 520px) and (orientation: portrait) {
+  body.tui #spd {
+    transform: translateX(-50%) scale(0.6);
+    transform-origin: top center;
+  }
+  body.tui #tl,
+  body.tui #tr {
+    padding: 5px 8px;
+  }
+  body.tui #tl b,
+  body.tui #tr b {
+    font-size: 16px;
+  }
+  body.tui #tl span,
+  body.tui #tr span {
+    font-size: 12px;
+  }
+  body.tui #mm {
+    width: 72px;
+    margin-top: 3px;
+  }
+  body.tui #mu {
+    top: calc(64px + env(safe-area-inset-top, 0px));
+    right: 8px;
+    height: 30px;
+    font-size: 14px;
+    padding: 1px 10px 0;
+  }
+  body.tui #nit,
+  body.joy #nit {
+    left: auto;
+    right: 8px;
+    transform: none;
+    top: calc(102px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    width: 130px;
+    padding: 5px 9px 7px;
+  }
+  body.tui #nit span {
+    font-size: 12px;
+  }
+  body.tui #nit i {
+    height: 5px;
+  }
+  body.tui #tc {
+    padding: 0 10px calc(12px + env(safe-area-inset-bottom, 0px));
+    align-items: flex-end;
+  }
+  body.tui #tc div {
+    gap: 8px;
+  }
+  body.tui #joy {
+    width: 124px;
+    height: 124px;
+  }
+  body.tui #joy i {
+    width: 54px;
+    height: 54px;
+    margin: -27px 0 0 -27px;
+  }
+  body.tui #tc button {
+    width: 66px;
+    height: 66px;
+    font-size: 20px;
+  }
+  body.tui #tc .rb .dr {
+    width: 56px;
+    height: 56px;
+    font-size: 15px;
+  }
+  body.tui #tc .rb {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+  body.tui #tc .rb .dr {
+    order: 0;
+  }
+}
+/* landscape phone: keep the middle clear so you can see your car */
+@media (max-height: 520px) and (orientation: landscape) {
+  body.tui #spd {
+    transform: translateX(-50%) scale(0.5);
+    transform-origin: top center;
+  }
+  body.tui #tl,
+  body.tui #tr {
+    padding: 5px 9px;
+  }
+  body.tui #tl b,
+  body.tui #tr b {
+    font-size: 16px;
+  }
+  body.tui #tl span,
+  body.tui #tr span {
+    font-size: 12px;
+  }
+  body.tui #mm {
+    width: 70px;
+    margin-top: 3px;
+  }
+  body.tui #nit,
+  body.joy #nit {
+    left: auto;
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    transform: none;
+    top: calc(84px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    width: 150px;
+    padding: 5px 9px 7px;
+  }
+  body.tui #nit span {
+    font-size: 12px;
+  }
+  body.tui #nit i {
+    height: 5px;
+  }
+  body.tui #mu {
+    left: auto;
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    transform: none;
+    top: calc(160px + env(safe-area-inset-top, 0px));
+    height: 28px;
+    font-size: 13px;
+    padding: 1px 10px 0;
+  }
+  body.tui #tc {
+    padding: 0 calc(14px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px))
+      calc(14px + env(safe-area-inset-left, 0px));
+    align-items: flex-end;
+  }
+  body.tui #tc div {
+    gap: 8px;
+  }
+  body.tui #joy {
+    width: 120px;
+    height: 120px;
+  }
+  body.tui #joy i {
+    width: 52px;
+    height: 52px;
+    margin: -26px 0 0 -26px;
+  }
+  body.tui #tc button {
+    width: 64px;
+    height: 64px;
+    font-size: 20px;
+  }
+  body.tui #tc .rb .dr {
+    width: 54px;
+    height: 54px;
+    font-size: 15px;
+  }
+}
