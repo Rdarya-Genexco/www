@@ -149,3 +149,7 @@ Don't change a car's `id` once players own it, because saves refer to cars by id
 | Veyra Bolt | Bugatti Bolide | 1500 | 250 | 1.40 | 1.30 | 0.70 |
 
 Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds are set in TOP_SPEEDS; Garage upgrades add up to 20% and nitro about 8%, but nothing goes faster than MAX_KMH (300 km/h). Supercars top out at 250 so even fully upgraded they stay under the cap and still differ (Toro 283 → Bolide 300).
+
+## One-file version
+
+`python3 tools/build-single.py` (needs `npm i esbuild`) writes `dist/index.html`: the whole game in a single ~10 MB file, with the code, styles, Three.js, car models and music packed inside. Open it straight from your files or host it anywhere. Sign-in, cloud saves, multiplayer and the web fonts still need the internet; everything else works offline.
