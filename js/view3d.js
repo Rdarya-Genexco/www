@@ -1902,6 +1902,56 @@ function start() {
   let player = null,
     playerKey = '';
   const seen = new Set();
+  /* power-ups: flying height, a block of ice round frozen cars, and the zap lightning bolt */
+  const FLY_H = 7,
+    ICE = new THREE.MeshStandardMaterial({
+      color: 0xbfeaff,
+      emissive: 0x6fbfff,
+      emissiveIntensity: 0.35,
+      transparent: true,
+      opacity: 0.45,
+      roughness: 0.1,
+      depthWrite: false,
+    });
+  function ice(m, on) {
+    if (!on && !m.userData.ice) return;
+    if (!m.userData.ice) {
+      const k = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 5.1), ICE);
+      k.position.y = 0.8;
+      m.add(k);
+      m.userData.ice = k;
+    }
+    m.userData.ice.visible = on;
+  }
+  let bolt = null;
+  function zapBolt() {
+    const z = G.zap,
+      mesh = o => (o === 'me' ? player : o && meshes.get(o));
+    const to = z && mesh(z.to);
+    if (!to || !to.visible) {
+      if (bolt) bolt.visible = false;
+      return;
+    }
+    if (!bolt) {
+      bolt = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(Array.from({ length: 12 }, () => new THREE.Vector3())),
+        new THREE.LineBasicMaterial({ color: 0xe2ccff, toneMapped: false }),
+      );
+      bolt.frustumCulled = false;
+      scene.add(bolt);
+    }
+    const from = z.from && mesh(z.from),
+      a = to.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
+      b = from && from.visible ? from.position.clone().add(new THREE.Vector3(0, 1.6, 0)) : a.clone().add(new THREE.Vector3(0, 30, 0)),
+      P = bolt.geometry.attributes.position;
+    for (let i = 0; i < 12; i++) {
+      const p = b.clone().lerp(a, i / 11),
+        j = i && i < 11 ? 1.2 : 0;
+      P.setXYZ(i, p.x + (Math.random() - 0.5) * j, p.y + (Math.random() - 0.5) * j, p.z + (Math.random() - 0.5) * j);
+    }
+    P.needsUpdate = true;
+    bolt.visible = true;
+  }
   function place(obj, d, o, yaw, roll = 0) {
     const p = at(d, o);
     obj.position.set(p.x, p.y, p.z);
@@ -2108,6 +2158,9 @@ function start() {
     }
     // body turns a little with steering, more when drifting, and leans slightly
     place(player, pos + G.PZ, px, -G.steer * 0.07 * sf - G.drift * 0.35, G.steer * 0.025 * sf);
+    const lift = (G.flyK || 0) * FLY_H;
+    player.position.y += lift + (lift > 0.3 ? Math.sin(G.t * 1.7) * 0.35 * G.flyK : 0);
+    ice(player, G.pFrz);
     spin(player, sf * dt * 60);
     windT.value += dt;
     grade.uniforms.time.value = (grade.uniforms.time.value + dt) % 100;
@@ -2151,7 +2204,12 @@ function start() {
         m.userData.cows.forEach((b, i) => walk(b, G.t * 4 + i * 0.5));
       if (!c.hz || c.hz === 'cyc' || c.hz === 'rick') spin(m, (c.sp / 12000) * dt * 60);
       if (m.userData.tail) m.userData.tail.emissiveIntensity = c.brk ? 4.5 : 1.4;
+      if (c.rv) {
+        m.position.y += ((c.alt || 0) / G.ALT) * FLY_H;
+        ice(m, c.frzT > 0);
+      }
     }
+    zapBolt();
     for (const [c, m] of meshes)
       if (!seen.has(c)) {
         scene.remove(m);
@@ -2163,10 +2221,10 @@ function start() {
     // camera height: never below the car's own road height, so it can't dip into a crest
     const carY = at(pos + G.PZ, 0).y;
     const cam = at(pos + G.PZ - 12.5 / FS, px * 0.92);
-    const camY = Math.max(cam.y, carY) + 4.2 + sf * 0.5;
+    const camY = Math.max(cam.y, carY) + 4.2 + sf * 0.5 + lift * 0.85;
     camera.position.set(cam.x, camY, cam.z);
     const ahead = at(pos + G.PZ + 20 / FS, px * 0.6);
-    look.set(ahead.x, ahead.y + 0.8, ahead.z);
+    look.set(ahead.x, ahead.y + 0.8 + lift * 0.7, ahead.z);
     camera.lookAt(look);
     const sh = G.reduce ? 0 : G.shake * 0.012;
     if (sh) camera.position.add(new THREE.Vector3((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, 0));

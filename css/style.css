@@ -1783,3 +1783,133 @@ body.mp.play #chatbtn {
     font-size: 15px;
   }
 }
+
+/* =================== power-ups: Fly, Zap, Freeze, Slingshot =================== */
+#tc .pw {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(118px + env(safe-area-inset-bottom, 0px));
+  flex-direction: column;
+  gap: 8px;
+}
+#tc .pw button {
+  width: 62px;
+  height: 62px;
+  font-size: 17px;
+}
+#tc .pw .fl {
+  border-color: rgba(255, 193, 94, 0.8);
+}
+#tc .pw .zp {
+  border-color: rgba(200, 160, 255, 0.85);
+}
+#tc .pw .fz {
+  border-color: rgba(150, 225, 255, 0.85);
+}
+#tc .pw .sl {
+  border-color: rgba(111, 240, 228, 0.85);
+}
+#tc .pw button.none {
+  opacity: 0.35;
+}
+/* keyboard players get the power-ups as small buttons too */
+body:not(.tui).play #tc {
+  display: flex;
+  pointer-events: none;
+}
+body:not(.tui).play #tc > :not(.pw) {
+  display: none;
+}
+body:not(.tui).play #tc .pw {
+  pointer-events: auto;
+  flex-direction: row;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+body:not(.tui).play #tc .pw button {
+  width: 54px;
+  height: 54px;
+  font-size: 14px;
+}
+#slp {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translateX(-50%);
+  width: min(320px, 60vw);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+#slp b {
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: #7fd7ff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+#slp i {
+  display: block;
+  height: 7px;
+  margin-top: 4px;
+  border-radius: 4px;
+  background: rgba(19, 17, 58, 0.6);
+  overflow: hidden;
+}
+#slp u {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #7fd7ff;
+}
+#pwfx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    radial-gradient(ellipse at center, rgba(190, 235, 255, 0) 45%, rgba(200, 240, 255, calc(var(--frz, 0) * 0.6)) 100%),
+    rgba(190, 160, 255, var(--zap, 0));
+}
+#pwfx::after {
+  content: attr(data-t);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 58%;
+  text-align: center;
+  font:
+    900 34px 'Big Shoulders Display',
+    Impact,
+    sans-serif;
+  color: #e8f8ff;
+  text-shadow: 0 0 14px #7fd7ff;
+}
+body:not(.play) #pwfx,
+body:not(.play) #slp {
+  display: none;
+}
+@media (max-width: 520px) and (orientation: portrait) {
+  #tc .pw {
+    bottom: calc(220px + env(safe-area-inset-bottom, 0px));
+    right: 10px;
+  }
+  #tc .pw button {
+    width: 50px;
+    height: 50px;
+    font-size: 13px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  #tc .pw {
+    flex-direction: row;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+  #tc .pw button {
+    width: 48px;
+    height: 48px;
+    font-size: 13px;
+  }
+}

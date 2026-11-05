@@ -1141,7 +1141,42 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         tgt *= 1.09;
       }
     }
-    const ob = ahead(c, c.o, SL * 7, 0);
+    /* rivals fly too: 3 flights each, used when stuck behind traffic or now and then */
+    if (c.fln == null) {
+      c.fln = 3;
+      c.ft = 0;
+      c.alt = 0;
+      c.pz = 1;
+      c.pf = 1;
+      c.ps = 1;
+    }
+    if (state === 'race') {
+      if (c.ft > 0) c.ft -= dt;
+      else if (c.fln > 0 && c.alt < 50 && Math.random() < dt * (ahead(c, c.o, SL * 7, 0) ? 0.6 : 0.03)) {
+        c.fln--;
+        c.ft = FLYT;
+      }
+    }
+    c.alt += ((c.ft > 0 ? ALT : 0) - c.alt) * Math.min(1, dt * (c.ft > 0 ? 1.4 : 5.5));
+    if (c.zapT > 0) {
+      c.zapT -= dt;
+      tgt *= 0.35;
+    }
+    if (c.slT > 0) {
+      c.slT -= dt;
+      tgt *= 1.18;
+    }
+    if (state === 'race' && time > 6 && !c.fin) {
+      const k = dt * (0.5 + diffSel);
+      if (c.ps > 0 && Math.random() < k * 0.05) {
+        c.ps--;
+        c.slT = 1.3;
+        c.sp *= 1.15;
+      }
+      if (c.pz > 0 && Math.random() < k * 0.035) botZap(c);
+      if (c.pf > 0 && Math.random() < k * 0.012) botFreeze(c);
+    }
+    const ob = c.alt > 300 ? null : ahead(c, c.o, SL * 7, 0);
     if (ob) {
       const alts = [-0.7, 0, 0.7]
         .filter(l => Math.abs(l - c.o) > 0.3 && !ahead(c, l, SL * 9, SL * 0.7))
@@ -1227,6 +1262,31 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
   const isSuper = b => SUPER.some(s => s[0] === b);
   const owns = (p, b) => !isSuper(b) || ((p && p.owned) || []).includes(b);
   const inp = { L: 0, R: 0, G: 0, B: 0, N: 0, X: 0, D: 0 };
+  /* power-ups (ported from the 50.14 build): Fly, Zap, Freeze and Slingshot; rivals get them too */
+  const ALT = 2400,
+    FLYT = 6;
+  let flights = 3,
+    ft = 0,
+    flyQ = 0,
+    galt = 0,
+    air = 0,
+    zaps = 1,
+    zapQ = 0,
+    zapFx = 0,
+    zapTgt = null,
+    zapFrom = null,
+    frz = 1,
+    frzQ = 0,
+    frzT = 0,
+    slN = 1,
+    slQ = 0,
+    slipChg = 0,
+    padT = 0,
+    pZapT = 0,
+    pFrzT = 0,
+    bfCd = 0,
+    bfN = 0,
+    bzCd = 0;
   let lv = 0,
     wallT = 0,
     scrT = 0,
@@ -1350,6 +1410,12 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
     }
     if (e.code === 'KeyD' && !e.repeat && (state === 'race' || state === 'count')) setDriftLock(!dLock);
+    if (!e.repeat && state === 'race') {
+      if (e.code === 'KeyR') flyQ = 1;
+      if (e.code === 'KeyE' || e.code === 'KeyQ') zapQ = 1;
+      if (e.code === 'KeyF') frzQ = 1;
+      if (e.code === 'KeyV') slQ = 1;
+    }
     if (e.code === 'KeyM') {
       muted = !muted;
       muLbl();
@@ -1360,7 +1426,19 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     const k = KM[e.code];
     if (k) inp[k] = 0;
   });
-  document.querySelectorAll('#tc button').forEach(b => {
+  // power-up buttons: one tap each
+  document.querySelectorAll('#tc [data-p]').forEach(b =>
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (state !== 'race') return;
+      const p = b.dataset.p;
+      if (p === 'fly') flyQ = 1;
+      else if (p === 'zap') zapQ = 1;
+      else if (p === 'frz') frzQ = 1;
+      else slQ = 1;
+    }),
+  );
+  document.querySelectorAll('#tc button[data-k]').forEach(b => {
     const k = b.dataset.k,
       on = e => {
         e.preventDefault();
@@ -2008,6 +2086,29 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     holes = 0;
     lv = 0;
     slip = 0;
+    flights = 3;
+    ft = 0;
+    flyQ = 0;
+    galt = 0;
+    air = 0;
+    zaps = 1;
+    zapQ = 0;
+    zapFx = 0;
+    zapTgt = null;
+    zapFrom = null;
+    frz = 1;
+    frzQ = 0;
+    frzT = 0;
+    slN = 1;
+    slQ = 0;
+    slipChg = 0;
+    padT = 0;
+    pZapT = 0;
+    pFrzT = 0;
+    bfCd = 0;
+    bfN = 0;
+    bzCd = 0;
+    pwLbl();
     wreck = false;
     dLock = false;
     document.querySelector('#tc [data-k=D]').classList.remove('on');
@@ -2771,6 +2872,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         (installPrompt ? '<button class="chip" data-a="install">⬇ Install app</button>' : '') +
         '</div>' +
         '<span class="hint k">Steer with the arrow keys. Space nitro, S brake, D drift on/off, M mute, Esc quit.</span>' +
+        '<span class="hint">Power-ups: R fly over the traffic (3 a race), E zap the car ahead, F freeze every other car for 3 s, V slingshot (once a race each). Sit in a rival\'s slipstream to fill the blue bar, then pull out for a free Slingshot. Rivals have zap, freeze and slingshot too.</span>' +
         '<span class="hint t">Drag the joystick (or hold the arrows) to steer and press Nitro to boost. Gas is automatic.</span>',
     );
   }
@@ -3260,6 +3362,204 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
         t: 0,
       });
   }
+  /* ---------- power-ups ---------- */
+  const whoosh = k => blip(240, 0.15 + 0.4 * k, 'triangle', 0.05);
+  function pwLbl() {
+    const set = (id, t, n) => {
+      const b = $(id);
+      if (b) {
+        b.textContent = t;
+        b.classList.toggle('none', n <= 0);
+      }
+    };
+    set('flyb', 'Fly ' + flights, flights + (ft > 0 ? 1 : 0));
+    set('zapb', '⚡ ' + zaps, zaps);
+    set('frzb', '❄ ' + frz, frz);
+    set('slb', 'Sling ' + slN, slN);
+  }
+  function takeOff() {
+    if (ft > 0) return;
+    if (flights <= 0) return toast('No flights left', 1);
+    flights--;
+    ft = FLYT;
+    blip(320, 0.35, 'sine');
+    toast('Flying · ' + flights + (flights === 1 ? ' flight' : ' flights') + ' left');
+    pwLbl();
+  }
+  /* zap: once a race, a lightning bolt hits the nearest rival ahead (or behind if nobody is ahead) and stuns it */
+  function zap() {
+    if (zaps <= 0) return toast('No zaps left', 1);
+    let best = null,
+      bd = 1e9;
+    for (const c of cars) {
+      if (!c.rv || c.fin) continue;
+      let dz = c.z - (pos + PZ);
+      if (dz > TL / 2) dz -= TL;
+      if (dz < -TL / 2) dz += TL;
+      const k = dz > 0 ? dz : TL + Math.abs(dz);
+      if (k < bd) {
+        bd = k;
+        best = c;
+      }
+    }
+    if (!best) return toast('Nobody to zap', 1);
+    zaps--;
+    pwLbl();
+    best.zapT = 2.5;
+    best.sp *= 0.35;
+    best.ft = 0;
+    best.bb = 0;
+    if (best.frzT > 0) {
+      best.frzT = 0;
+      toast('Zap beats Freeze!', 0, 'cp');
+    } else toast('Zapped ' + best.name + '!', 0, 'cp');
+    zapTgt = best;
+    zapFrom = null;
+    zapFx = 0.55;
+    shake = reduce ? 0 : 6;
+    vib(80);
+    blip(1400, 0.35, 'sawtooth', 0.08);
+    whoosh(0.25);
+  }
+  /* freeze: once a race, every other car stops for 3 seconds */
+  function freeze() {
+    if (frz <= 0) return toast('No freezes left', 1);
+    if (frzT > 0) return;
+    frz--;
+    pwLbl();
+    frzT = 3;
+    bfCd = Math.max(bfCd, 10);
+    for (const c of cars)
+      if (c.rv && !(c.zapT > 0)) {
+        c.frzT = 3;
+        c.sp = 0;
+        c.bb = 0;
+      }
+    toast('Freeze!', 0, 'cp');
+    vib(90);
+    blip(1800, 0.6, 'sine', 0.07);
+    whoosh(0.2);
+  }
+  /* slingshot: the Sling button works once a race (bigger with a fuller blue bar); pulling out at a full bar fires one free */
+  function sling(btn) {
+    if (btn) {
+      if (slN <= 0) return toast('No slingshots left', 1);
+      slN--;
+      pwLbl();
+    }
+    const k = btn ? 0.5 + 0.5 * slipChg : 1;
+    padT = 1.3 * k;
+    speed = Math.min(CAP, MAXS * UP.ts * (1 + 0.18 * k), speed + MAXS * 0.18 * k);
+    toast(k >= 1 ? 'Slingshot!' : 'Slingshot', 0, 'cp');
+    whoosh(0.3 * k);
+    shake = reduce ? 0 : 5 * k;
+    slipChg = 0;
+  }
+  /* bot power-ups: a bot zaps the nearest car ahead of it (that can be you), or freezes everyone but itself.
+     Fairness: at most 2 bot freezes a race, 15 s apart, and 8 s between bots zapping you */
+  function botZap(c) {
+    let best = null,
+      bd = 1e9;
+    const look = (z, o) => {
+      let dz = z - c.z;
+      if (dz < 0) dz += TL;
+      if (dz > 0 && dz < TL / 2 && dz < bd) {
+        bd = dz;
+        best = o;
+      }
+    };
+    for (const o of cars) if (o.rv && o !== c && !o.fin) look(o.z, o);
+    if (!pFin) look((pos + PZ) % TL, 'me');
+    if (!best || (best === 'me' && bzCd > 0)) return;
+    if (best === 'me') bzCd = 8;
+    c.pz--;
+    zapFrom = c;
+    zapTgt = best;
+    zapFx = 0.55;
+    if (best === 'me') {
+      pZapT = 2.5;
+      if (pFrzT > 0) {
+        pFrzT = 0;
+        toast(c.name + ' zapped through your freeze!', 1);
+      } else toast(c.name + ' zapped you!', 1);
+      speed *= 0.4;
+      boost = 0;
+      if (ft > 0) ft = Math.max(0, ft - 1.5);
+      shake = reduce ? 0 : 8;
+      vib(120);
+      blip(1400, 0.35, 'sawtooth', 0.08);
+    } else {
+      best.zapT = 2.5;
+      best.sp *= 0.35;
+      best.ft = 0;
+      best.bb = 0;
+    }
+  }
+  function botFreeze(c) {
+    if (bfCd > 0 || bfN >= 2) return;
+    bfN++;
+    bfCd = 15;
+    c.pf--;
+    for (const o of cars)
+      if (o.rv && o !== c && !(o.zapT > 0)) {
+        o.frzT = 3;
+        o.sp = 0;
+        o.bb = 0;
+      }
+    if (!pFin && !(pZapT > 0)) {
+      pFrzT = 3;
+      speed = 0;
+      boost = 0;
+    }
+    frzT = 3;
+    toast(c.name + ' froze everyone!', 1);
+    vib(90);
+    blip(1800, 0.6, 'sine', 0.07);
+  }
+  function powers(dt) {
+    if (state === 'menu' || state === 'count') ft = 0;
+    if (state === 'race') {
+      if (flyQ) takeOff();
+      if (zapQ) zap();
+      if (frzQ) freeze();
+      if (slQ) sling(true);
+    }
+    flyQ = zapQ = frzQ = slQ = 0;
+    if (frzT > 0) frzT -= dt;
+    if (pZapT > 0) pZapT -= dt;
+    if (pFrzT > 0) pFrzT -= dt;
+    if (bfCd > 0) bfCd -= dt;
+    if (bzCd > 0) bzCd -= dt;
+    if (zapFx > 0) zapFx -= dt;
+    if (ft > 0) {
+      ft -= dt;
+      if (ft <= 0) {
+        ft = 0;
+        pwLbl();
+      }
+    }
+    const was = galt;
+    galt += ((ft > 0 ? ALT : 0) - galt) * Math.min(1, dt * (ft > 0 ? 1.4 : 5.5));
+    if (was > 40 && galt <= 40 && ft <= 0) {
+      shake = reduce ? 0 : 10;
+      vib(120);
+      blip(110, 0.25, 'sawtooth');
+    }
+    air = galt;
+    // HUD: slipstream bar and screen effects
+    const e = $('slp');
+    if (e) {
+      e.style.opacity = state === 'race' && slipChg > 0 ? 1 : 0;
+      e.querySelector('u').style.width = Math.round(slipChg * 100) + '%';
+      e.querySelector('b').textContent = slipChg >= 1 ? 'SLINGSHOT READY · pull out or tap Sling' : 'SLIPSTREAM';
+    }
+    const fx = $('pwfx');
+    if (fx) {
+      fx.style.setProperty('--frz', reduce ? 0 : Math.min(1, Math.max(frzT, pFrzT, 0)) * 0.9);
+      fx.style.setProperty('--zap', reduce ? 0 : pZapT > 0 ? 0.25 + 0.2 * Math.sin(tg * 40) : 0);
+      fx.dataset.t = pFrzT > 0 ? 'FROZEN ' + Math.ceil(pFrzT) : pZapT > 0 ? 'ZAPPED' : '';
+    }
+  }
   function update(dt) {
     tg += dt;
     const seg = segs[Math.floor(pos / SL) % N];
@@ -3361,7 +3661,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       const grass = Math.abs(px) > 1.17,
         pw = Math.min(W * 0.24, H * 0.42),
         side = Math.sign(px) || 1;
-      if (grass && speed > MAXS * 0.15) {
+      if (grass && air < 300 && speed > MAXS * 0.15) {
         shake = Math.max(shake, 2.5);
         if (!reduce && Math.random() < dt * 25)
           sparks.push({
@@ -3380,6 +3680,7 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       const wall = FENCE - 0.14;
       if (Math.abs(px) > wall) {
         px = side * wall;
+        if (air >= 300) lv = 0;
         if (lv * side > 0) {
           if (Math.abs(lv) > 0.35 && !(wallT > 0)) {
             wallT = 0.5;
@@ -3400,12 +3701,17 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           blip(170 + Math.random() * 60, 0.06, 'sawtooth', 0.05);
         }
       }
-      let lim = Math.min(CAP, MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg));
-      if (grass) lim = Math.min(lim, MAXS * UP.ts * (0.45 + 0.06 * UP.gr));
+      let lim = Math.min(
+        CAP,
+        MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg) * (padT > 0 ? 1.15 : 1) * (pZapT > 0 ? 0.45 : 1),
+      );
+      if (padT > 0) padT -= dt;
+      if (grass && air < 300) lim = Math.min(lim, MAXS * UP.ts * (0.45 + 0.06 * UP.gr));
       // above the limit (nitro ending, damage): ease back, faster than gas and nitro can push
       if (speed > lim) speed = Math.max(lim, speed - MAXS * 1.2 * dt);
       speed = clamp(speed, 0, CAP);
-      steer += (R - L + X - steer) * Math.min(1, dt * 8);
+      if (pFrzT > 0 && state === 'race') speed = 0;
+      steer += ((pFrzT > 0 ? 0 : R - L + X) - steer) * Math.min(1, dt * 8);
     }
     CD = 0.84 - 0.12 * boost;
     const np = pos + dt * speed;
@@ -3494,9 +3800,13 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       if (s.t > s.l) sparks.splice(i, 1);
     }
     const pp = pos + PZ;
+    let inSlip = false;
     for (const c of cars) {
       if (c.rv) {
-        if (state === 'race' || state === 'count' || state === 'done') rivalStep(c, dt);
+        if (c.frzT > 0) {
+          c.frzT -= dt;
+          c.sp = 0;
+        } else if (state === 'race' || state === 'count' || state === 'done') rivalStep(c, dt);
       } else if (c.ghost || c.net) {
         // placed by the ghost playback above
       } else {
@@ -3533,7 +3843,18 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
           toast('Bump!', 0);
         }
       }
-      if (state === 'race' && !c.ghost && !c.net) {
+      if (
+        c.rv &&
+        state === 'race' &&
+        air < 300 &&
+        !(c.alt > 300) &&
+        dz > SL * 1.5 &&
+        dz < SL * 14 &&
+        Math.abs(c.o - px) < 0.5 &&
+        speed > MAXS * 0.35
+      )
+        inSlip = true;
+      if (state === 'race' && !c.ghost && !c.net && air < 300 && !(c.alt > 300)) {
         const dxo = Math.abs(c.o - px);
         if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
           speed = Math.max(c.sp, MAXS * 0.16) * 0.5;
@@ -3578,6 +3899,11 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
       }
       c.pd = dz;
     }
+    // slingshot: stay in a rival's slipstream to fill the blue bar, pull out at full for a free boost
+    if (inSlip) slipChg = Math.min(1, slipChg + dt / 1.6);
+    else if (slipChg >= 1 && state === 'race') sling(false);
+    else slipChg = Math.max(0, slipChg - dt * 0.8);
+    powers(dt);
     if (mode === 'mp' && mpOn && (state === 'race' || state === 'count')) {
       mpSync(dt);
       mpSendT -= dt;
@@ -5109,6 +5435,19 @@ const SONGS = ['assets/music/song-1.mp3', 'assets/music/song-2.mp3', 'assets/mus
     },
     get drift() {
       return da;
+    },
+    get flyK() {
+      return air / ALT;
+    },
+    ALT,
+    get zap() {
+      return zapFx > 0 ? { t: zapFx, to: zapTgt, from: zapFrom } : null;
+    },
+    get pFrz() {
+      return pFrzT > 0;
+    },
+    get pZap() {
+      return pZapT > 0;
     },
     get slip() {
       return slip;
