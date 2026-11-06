@@ -3442,6 +3442,7 @@ const SONGS = [];
   function freeze() {
     if (frz <= 0) return toast('No freezes left', 1);
     if (frzT > 0) return;
+    if (!cars.some(c => c.rv && !c.fin)) return toast('Nobody to freeze', 1);
     frz--;
     pwLbl();
     frzT = 3;
@@ -3466,7 +3467,7 @@ const SONGS = [];
     }
     const k = btn ? 0.5 + 0.5 * slipChg : 1;
     padT = 1.3 * k;
-    speed = Math.min(CAP, MAXS * UP.ts * (1 + 0.18 * k), speed + MAXS * 0.18 * k);
+    speed = Math.max(speed, Math.min(CAP, MAXS * UP.ts * (1 + 0.18 * k), speed + MAXS * 0.18 * k)); // never slows you
     toast(k >= 1 ? 'Slingshot!' : 'Slingshot', 0, 'cp');
     whoosh(0.3 * k);
     shake = reduce ? 0 : 5 * k;
@@ -3733,9 +3734,12 @@ const SONGS = [];
       }
       // the fence is solid: hitting it bounces you back with sparks, scraping along it scrubs speed
       const wall = FENCE - 0.14;
-      if (Math.abs(px) > wall) {
+      if (Math.abs(px) > wall && air >= 300) {
+        // flying: just keep over the road, no scrape, sparks or damage
         px = side * wall;
-        if (air >= 300) lv = 0;
+        lv = 0;
+      } else if (Math.abs(px) > wall) {
+        px = side * wall;
         if (lv * side > 0) {
           if (Math.abs(lv) > 0.35 && !(wallT > 0)) {
             wallT = 0.5;
@@ -3776,7 +3780,7 @@ const SONGS = [];
     } else pos = np;
     if (state === 'race') {
       const ps = segs[Math.floor((pos + PZ) / SL) % N];
-      if (ps.ph && ps.ph.length && lph !== ps.i) {
+      if (air < 300 && ps.ph && ps.ph.length && lph !== ps.i) {
         lph = ps.i;
         for (const h of ps.ph)
           if (Math.abs(px - h.o) < h.w + 0.06) {
@@ -3882,7 +3886,7 @@ const SONGS = [];
       if (dz > TL / 2) dz -= TL;
       if (dz < -TL / 2) dz += TL;
       // multiplayer bumping: each player pushes only their own car, so contact feels the same on both sides
-      if (state === 'race' && c.net && !c.hidden) {
+      if (state === 'race' && c.net && !c.hidden && air < 300) {
         const dxo = Math.abs(c.o - px);
         if (c.bumpT > 0) c.bumpT -= dt;
         if (Math.abs(dz) < SL * 1.1 && dxo < 0.3 && !(c.bumpT > 0)) {
