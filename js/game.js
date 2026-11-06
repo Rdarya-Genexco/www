@@ -143,14 +143,10 @@ const SONGS = [];
   addEventListener('beforeinstallprompt', e => {
     e.preventDefault(); // show our own Install button in the menu instead
     installPrompt = e;
-    if (
-      typeof state !== 'undefined' &&
-      state === 'menu' &&
-      me &&
-      !ov.hidden &&
-      $('ov').querySelector('.menu')
-    )
-      showMenu();
+    // add the Install button to the menu in place (redrawing the whole menu made it flash)
+    const st = $('ov').querySelector('[data-a=settings]');
+    if (st && !$('ov').querySelector('[data-a=install]'))
+      st.insertAdjacentHTML('afterend', '<button class="chip" data-a="install">⬇ Install app</button>');
   });
   addEventListener('appinstalled', () => {
     installPrompt = null;
