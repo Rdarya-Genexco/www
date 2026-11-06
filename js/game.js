@@ -211,20 +211,42 @@ const SONGS = [];
     save();
     showMenu();
   }
-  /* keep whichever copy of each driver has done more (more races, then more points) */
+  /* league bots: keep whichever copy has raced more (more races, then more points) */
   const better = (a, b) =>
     !a
       ? b
       : !b
         ? a
         : (b.races || 0) > (a.races || 0) ||
-            ((b.races || 0) === (a.races || 0) && (b.careerPts || 0) > (a.careerPts || 0))
+            ((b.races || 0) === (a.races || 0) && (b.careerPts || 0) >= (a.careerPts || 0))
           ? b
           : a;
+  /* drivers: combine this device's copy with the online one so no progress is ever lost.
+     Cars owned are added together, every upgrade, point and record keeps its best value */
+  function mergeDriver(a, b) {
+    if (!a || !b) return a || b;
+    const base = better(a, b),
+      m = Object.assign({}, base),
+      max = k => (m[k] = Math.max(a[k] || 0, b[k] || 0));
+    ['points', 'careerPts', 'races', 'wins'].forEach(max);
+    if ((a.season || '') === (b.season || '')) max('seasonPts');
+    m.owned = [...new Set([...(a.owned || []), ...(b.owned || [])])];
+    m.upg = Object.assign({}, a.upg);
+    for (const k in b.upg || {}) m.upg[k] = Math.max(m.upg[k] || 0, b.upg[k] || 0);
+    const tt = [a.ttBest, b.ttBest].filter(x => x != null);
+    if (tt.length && tt.every(x => typeof x === 'number')) m.ttBest = Math.min(...tt);
+    if (a.ttBy || b.ttBy) {
+      m.ttBy = Object.assign({}, a.ttBy);
+      for (const k in b.ttBy || {}) if (!(m.ttBy[k] <= b.ttBy[k])) m.ttBy[k] = b.ttBy[k];
+    }
+    if ((a.history || []).length > (b.history || []).length) m.history = a.history;
+    else if (b.history) m.history = b.history;
+    return m;
+  }
   async function cloudPull() {
     try {
       const d = await window.cloud.load();
-      if (d && d.profiles) for (const k in d.profiles) profiles[k] = better(profiles[k], d.profiles[k]);
+      if (d && d.profiles) for (const k in d.profiles) profiles[k] = mergeDriver(profiles[k], d.profiles[k]);
       if (d && d.curKey && profiles[d.curKey]) curKey = d.curKey;
       // friends and recent drivers: keep everything from both copies
       if (d && d.friends) Object.assign(friends, d.friends);
