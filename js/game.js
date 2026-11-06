@@ -1036,7 +1036,7 @@ const SONGS = [];
       cars.push(c);
     }
     /* Mumbai street life: slow rickshaws and bullock carts in the lanes, cows that wander about (in every mode, including time trial) */
-    if (MAPS[mapSel].hz && state !== 'menu') {
+    if (MAPS[mapSel].hz) {
       const K = ['rick', 'cyc', 'rick', 'cart', 'cow', 'rick', 'cyc', 'cow'],
         CYC = ['#e8433f', '#2f7de1', '#f2b705', '#3bb273'];
       for (let i = 0; i < 40; i++) {
@@ -2763,13 +2763,31 @@ const SONGS = [];
   }
 
   /* ---------- menus ---------- */
+  /* switching map or country: fade out, build the new place behind the fade, fade back in */
+  let mapFading = false;
   function pickMap(id) {
-    loadMap(id);
-    pos = 0;
-    px = 0;
-    cpNext = 0;
-    save();
-    showMenu();
+    if (id === mapSel || mapFading) return showMenu();
+    const f = $('fade');
+    mapFading = true;
+    if (f) f.classList.add('on');
+    setTimeout(
+      () => {
+        loadMap(id);
+        pos = 0;
+        px = 0;
+        cpNext = 0;
+        save();
+        showMenu();
+        // give the 3D view two frames to build the new scenery while the screen is still dark
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (f) f.classList.remove('on');
+            mapFading = false;
+          }),
+        );
+      },
+      f && !reduce ? 260 : 0,
+    );
   }
   function ovSet(h) {
     if (window.view3d) window.view3d.showroom = null;

@@ -1995,3 +1995,17 @@ body:not(.play) #slp {
     opacity: 0.3;
   }
 }
+/* smooth change of map or country */
+#fade {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: #13113a;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+#fade.on {
+  opacity: 1;
+  pointer-events: auto;
+}
