@@ -1922,3 +1922,24 @@ body:not(.play) #slp {
     font-size: 13px;
   }
 }
+/* laptops and desktops: show each power-up's key next to its button */
+@media (hover: hover) and (pointer: fine) {
+  #tc .pw button {
+    position: relative;
+    overflow: visible;
+  }
+  #tc .pw button::after {
+    content: attr(data-key);
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: var(--ink);
+    color: var(--night);
+    font: 800 13px/20px 'Big Shoulders Display', Impact, sans-serif;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  }
+}

@@ -2164,8 +2164,7 @@ function start() {
     spin(player, sf * dt * 60);
     windT.value += dt;
     grade.uniforms.time.value = (grade.uniforms.time.value + dt) % 100;
-    grade.uniforms.speed.value =
-      G.state === 'race' && !G.reduce ? Math.max(0, (sf - 0.55) * 2.2) + G.boost * 0.6 : 0;
+    grade.uniforms.speed.value = 0; // no speed blur: the scenery stays sharp at any speed
     skids(dt, sf);
     player.userData.tail.emissiveIntensity = G.braking ? 4.5 : 1.4;
     // damage: a fresh car when health resets, a dent for every hit
