@@ -2147,7 +2147,7 @@ function start() {
 
     // player car
     const pl = G.player,
-      key = pl.body + pl.col;
+      key = pl.body + pl.col + modelVer; // rebuilt once its model has loaded
     if (key !== playerKey) {
       if (player) {
         scene.remove(player);
@@ -2189,8 +2189,16 @@ function start() {
     for (const c of G.cars) {
       seen.add(c);
       let m = meshes.get(c);
+      // built before the car models finished loading: rebuild it with the real model
+      if (m && !c.hz && m.userData.mv !== modelVer) {
+        scene.remove(m);
+        disposeTree(m);
+        meshes.delete(c);
+        m = null;
+      }
       if (!m) {
         m = c.hz ? makeHazard(c.hz, c.col) : c.ghost ? makeGhost(c.body, c.col) : makeCar(c.body, c.col);
+        m.userData.mv = modelVer;
         if (c.rv || c.net) m.add(label(c.name)); // rivals and other online players
         scene.add(m);
         meshes.set(c, m);
