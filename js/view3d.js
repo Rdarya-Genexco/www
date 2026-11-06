@@ -2339,7 +2339,7 @@ function start() {
   const active = () => !!(window.view3d.showroom && !ovEl.hidden);
   function showroom(dt) {
     const sr = window.view3d.showroom,
-      key = sr.body + sr.col;
+      key = sr.body + sr.col + modelVer; // rebuilt once the real model has loaded
     if (key !== showKey) {
       if (showCar) {
         table.remove(showCar);
