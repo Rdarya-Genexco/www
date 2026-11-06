@@ -37,6 +37,23 @@
     <script type="module" src="js/cloud.js"></script>
   </head>
   <body>
+    <!-- loading screen: covers the start-up until the 3D view and car models are ready -->
+    <div id="boot"><b>Worldwide Wheels</b><span>Loading…</span></div>
+    <script>
+      window.bootDone = () => {
+        const b = document.getElementById('boot');
+        if (b && !b.classList.contains('out')) {
+          b.classList.add('out');
+          setTimeout(() => b.remove(), 400);
+        }
+      };
+      // never wait forever: slow network, or a device without 3D graphics (it uses the 2D view)
+      setTimeout(window.bootDone, 12000);
+      try {
+        const c = document.createElement('canvas');
+        if (!(c.getContext('webgl2') || c.getContext('webgl'))) addEventListener('load', window.bootDone);
+      } catch (e) {}
+    </script>
     <canvas id="c"></canvas>
     <div id="hud">
       <div id="tl">

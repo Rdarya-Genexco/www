@@ -1961,3 +1961,37 @@ body:not(.play) #slp {
 #st .bars s {
   background: #6ff0e4;
 }
+/* start-up loading screen */
+#boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: radial-gradient(ellipse at center, #2a1f5c, #13113a 70%);
+  color: var(--ink, #fff4e0);
+  transition: opacity 0.35s;
+}
+#boot b {
+  font-size: clamp(40px, 9vw, 84px);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+#boot span {
+  font-size: 20px;
+  font-weight: 700;
+  opacity: 0.75;
+  animation: bootPulse 1.2s ease-in-out infinite alternate;
+}
+#boot.out {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes bootPulse {
+  to {
+    opacity: 0.3;
+  }
+}

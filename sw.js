@@ -2,7 +2,7 @@
    On install it saves the whole game (code, 3D engine, music, icons). After that every request for a game
    file is answered from the saved copy straight away, while a fresh copy is fetched in the background, so
    updates arrive on the next launch. Online services (Firebase sign-in and saves) always go to the network. */
-const CACHE = 'worldwide-wheels-v3';
+const CACHE = 'worldwide-wheels-v4';
 const FILES = [
   'assets/fonts/big-shoulders-display.woff2',
   'assets/models/poly-pizza/lamborghini-aventador.glb',
@@ -73,16 +73,16 @@ self.addEventListener('fetch', e => {
   const own = url.origin === location.origin,
     fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (req.method !== 'GET' || (!own && !fonts)) return;
+  // network first: online you always get the newest version (no old copy flashing up first);
+  // offline, or if the network fails, the saved copy is used
   e.respondWith(
-    caches.open(CACHE).then(async cache => {
-      const hit = await cache.match(req, { ignoreSearch: own });
-      const fresh = fetch(req)
+    caches.open(CACHE).then(cache =>
+      fetch(req)
         .then(res => {
           if (res.ok || res.type === 'opaque') cache.put(req, res.clone());
           return res;
         })
-        .catch(() => hit);
-      return hit || fresh;
-    }),
+        .catch(() => cache.match(req, { ignoreSearch: own }).then(hit => hit || Response.error())),
+    ),
   );
 });

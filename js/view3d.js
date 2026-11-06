@@ -377,7 +377,10 @@ function start() {
         modelVer++;
       },
       undefined,
-      err => console.warn('could not load car model ' + m.url + ', using the built-in one', err),
+      err => {
+        MODELS[m.url].failed = true;
+        console.warn('could not load car model ' + m.url + ', using the built-in one', err);
+      },
     );
     return null;
   }
@@ -2456,4 +2459,14 @@ function start() {
     },
   };
   document.body.classList.add('gl');
+  /* load every car model up front and keep the loading screen up until they're in, so the first thing you
+     see is the finished game (no flat 2D view, no stand-in cars swapping to the real ones) */
+  const models = (window.CAR_LIST || []).map(c => c.shape && c.shape.model).filter(Boolean);
+  models.forEach(modelFor);
+  const wait = setInterval(() => {
+    if (models.every(m => MODELS[m.url] && (MODELS[m.url].scene || MODELS[m.url].failed))) {
+      clearInterval(wait);
+      requestAnimationFrame(() => requestAnimationFrame(() => window.bootDone && window.bootDone()));
+    }
+  }, 100);
 }
