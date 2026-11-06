@@ -40,18 +40,24 @@
     <!-- loading screen: covers the start-up until the 3D view and car models are ready -->
     <div id="boot"><b>Worldwide Wheels</b><span>Loading…</span></div>
     <script>
-      window.bootDone = () => {
+      // the loading screen stays until both the car models and the online account are ready,
+      // so the menu appears once, complete, instead of drawing and then redrawing
+      const bootWait = { models: 1, cloud: 1 };
+      window.bootDone = part => {
+        if (part) delete bootWait[part];
+        else for (const k in bootWait) delete bootWait[k];
         const b = document.getElementById('boot');
-        if (b && !b.classList.contains('out')) {
+        if (b && !Object.keys(bootWait).length && !b.classList.contains('out')) {
           b.classList.add('out');
           setTimeout(() => b.remove(), 400);
         }
       };
+      setTimeout(() => window.bootDone('cloud'), 5000); // offline or online saves blocked: don't wait for them
       // never wait forever: slow network, or a device without 3D graphics (it uses the 2D view)
-      setTimeout(window.bootDone, 12000);
+      setTimeout(() => window.bootDone(), 12000);
       try {
         const c = document.createElement('canvas');
-        if (!(c.getContext('webgl2') || c.getContext('webgl'))) addEventListener('load', window.bootDone);
+        if (!(c.getContext('webgl2') || c.getContext('webgl'))) addEventListener('load', () => window.bootDone('models'));
       } catch (e) {}
     </script>
     <canvas id="c"></canvas>

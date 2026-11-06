@@ -2474,7 +2474,7 @@ function start() {
   const wait = setInterval(() => {
     if (models.every(m => MODELS[m.url] && (MODELS[m.url].scene || MODELS[m.url].failed))) {
       clearInterval(wait);
-      requestAnimationFrame(() => requestAnimationFrame(() => window.bootDone && window.bootDone()));
+      requestAnimationFrame(() => requestAnimationFrame(() => window.bootDone && window.bootDone('models')));
     }
   }, 100);
 }

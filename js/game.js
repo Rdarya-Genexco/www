@@ -283,13 +283,17 @@ const SONGS = [];
       console.warn(e);
     }
   }
+  const bootCloud = () => window.bootDone && window.bootDone('cloud');
   addEventListener('cloudauth', e => {
     const was = cUser;
     cUser = e.detail;
-    if (!cUser) cReady = false;
+    if (!cUser) {
+      cReady = false;
+      bootCloud();
+    }
     if (cUser && (!was || was.uid !== cUser.uid)) {
       cReady = false;
-      cloudPull();
+      cloudPull().finally(bootCloud);
     } else if (
       typeof state !== 'undefined' &&
       state === 'menu' &&
