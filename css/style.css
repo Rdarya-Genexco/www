@@ -1,3 +1,12 @@
+/* Big Shoulders Display (SIL Open Font License), shipped with the game. font-display: block waits briefly for it
+   instead of showing a wider fallback font first, so the text doesn't jump from big to medium */
+@font-face {
+  font-family: 'Big Shoulders Display';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url(../assets/fonts/big-shoulders-display.woff2) format('woff2');
+}
 :root {
   color-scheme: dark;
   --ink: #fff4e0;

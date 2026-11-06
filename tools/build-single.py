@@ -12,6 +12,7 @@ OUT = os.path.join(ROOT, 'dist', 'index.html')
 read = lambda p: open(os.path.join(ROOT, p), encoding='utf-8').read()
 mimetypes.add_type('model/gltf-binary', '.glb')
 mimetypes.add_type('audio/mpeg', '.mp3')
+mimetypes.add_type('font/woff2', '.woff2')
 
 
 def data_url(path):
@@ -78,7 +79,9 @@ hooks = """(() => {
 html = read('index.html')
 html = re.sub(r'\s*<link rel="(manifest|apple-touch-icon)"[^>]*>', '', html)
 html = html.replace('href="favicon.svg"', 'href="%s"' % data_url('favicon.svg'))
-html = html.replace('<link rel="stylesheet" href="css/style.css" />', '<style>\n%s\n</style>' % read('css/style.css'))
+html = re.sub(r'\s*<link rel="preload" href="assets/fonts/[^>]*>', '', html)
+css = read('css/style.css').replace('url(../assets/fonts/big-shoulders-display.woff2)', 'url(%s)' % data_url('assets/fonts/big-shoulders-display.woff2'))
+html = html.replace('<link rel="stylesheet" href="css/style.css" />', '<style>\n%s\n</style>' % css)
 html = re.sub(r'\s*<script src="js/(cars|game)\.js" defer></script>', '', html)
 html = re.sub(r'\s*<!-- 3D view:.*?</script>\s*<script type="module" src="js/view3d.js"></script>\s*<script type="module" src="js/cloud.js"></script>',
               '', html, flags=re.S)

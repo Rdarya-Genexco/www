@@ -3547,20 +3547,32 @@ const SONGS = [];
       blip(110, 0.25, 'sawtooth');
     }
     air = galt;
-    // HUD: slipstream bar and screen effects
-    const e = $('slp');
-    if (e) {
-      e.style.opacity = state === 'race' && slipChg > 0 ? 1 : 0;
-      e.querySelector('u').style.width = Math.round(slipChg * 100) + '%';
-      e.querySelector('b').textContent = slipChg >= 1 ? 'SLINGSHOT READY · pull out or tap Sling' : 'SLIPSTREAM';
+    // HUD: slipstream bar and screen effects (only touch the page when something changed)
+    const sv = state === 'race' && slipChg > 0 ? Math.round(slipChg * 50) : -1;
+    if (sv !== pwHud.s) {
+      pwHud.s = sv;
+      const e = $('slp');
+      if (e) {
+        e.style.opacity = sv < 0 ? 0 : 1;
+        e.querySelector('u').style.width = Math.max(0, sv * 2) + '%';
+        e.querySelector('b').textContent = slipChg >= 1 ? 'SLINGSHOT READY · pull out or tap Sling' : 'SLIPSTREAM';
+      }
     }
-    const fx = $('pwfx');
-    if (fx) {
-      fx.style.setProperty('--frz', reduce ? 0 : Math.min(1, Math.max(frzT, pFrzT, 0)) * 0.9);
-      fx.style.setProperty('--zap', reduce ? 0 : pZapT > 0 ? 0.25 + 0.2 * Math.sin(tg * 40) : 0);
-      fx.dataset.t = pFrzT > 0 ? 'FROZEN ' + Math.ceil(pFrzT) : pZapT > 0 ? 'ZAPPED' : '';
+    const fz = reduce ? 0 : Math.round(Math.min(1, Math.max(frzT, pFrzT, 0)) * 20) / 20,
+      zp = reduce || !(pZapT > 0) ? 0 : Math.round((0.25 + 0.2 * Math.sin(tg * 40)) * 10) / 10,
+      tx = pFrzT > 0 ? 'FROZEN ' + Math.ceil(pFrzT) : pZapT > 0 ? 'ZAPPED' : '';
+    if (fz !== pwHud.f || zp !== pwHud.z || tx !== pwHud.t) {
+      Object.assign(pwHud, { f: fz, z: zp, t: tx });
+      const fx = $('pwfx');
+      if (fx) {
+        fx.style.setProperty('--frz', fz * 0.9);
+        fx.style.setProperty('--zap', zp);
+        fx.dataset.t = tx;
+        fx.style.display = fz || zp || tx ? '' : 'none';
+      }
     }
   }
+  const pwHud = {};
   function update(dt) {
     tg += dt;
     const seg = segs[Math.floor(pos / SL) % N];

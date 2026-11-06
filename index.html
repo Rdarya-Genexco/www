@@ -17,12 +17,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="W. Wheels" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&display=swap"
-      rel="stylesheet"
-    />
+    <!-- the font ships with the game (assets/fonts), so text never jumps from a big fallback font to this one -->
+    <link rel="preload" href="assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="css/style.css" />
     <!-- game.js first: it listens for the sign-in events that cloud.js sends -->
     <!-- every car (names, prices, stats, looks): edit js/cars.js -->

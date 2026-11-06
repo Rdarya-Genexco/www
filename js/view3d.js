@@ -467,8 +467,8 @@ function start() {
       e.position.set(x, ey, backZ(x, ey) - 0.05);
       g.add(e);
     }
-    // rear wing
-    if (s.wing) {
+    // rear wing: the base model already has one, so only the big race wing (level 3) is added
+    if (s.wing === 3) {
       const wy = r + s.deck + (s.wing === 3 ? 0.5 : s.wing === 2 ? 0.36 : 0.2);
       for (const sx of [-0.45, 0.45]) g.add(box(0.05, wy - r - s.deck + 0.1, 0.1, M.black, sx, (wy + r + s.deck) / 2, b - 0.4));
       g.add(rbox(W * (s.wing === 3 ? 1.02 : 0.9), 0.05, 0.4, s.wing === 3 ? pm : M.black, 0, wy, b - 0.4, 0.03));
@@ -499,7 +499,7 @@ function start() {
       for (const sx of [-1, 1]) {
         const c = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.02, 6, 24, Math.PI * 1.15), acc);
         c.rotation.set(0, Math.PI / 2, Math.PI * 0.42);
-        c.position.set(sx * (W / 2 + 0.02), r + 0.42, -0.25);
+        c.position.set(sideX(sx, r + 0.42, -0.25) + sx * 0.01, r + 0.42, -0.25);
         g.add(c);
       }
     // coloured brake calipers inside the wheels
