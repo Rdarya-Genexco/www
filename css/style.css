@@ -1943,3 +1943,21 @@ body:not(.play) #slp {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   }
 }
+/* standings: each driver's nitro (orange) and car health (teal) */
+#st .bars {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 34px;
+}
+#st .bars u,
+#st .bars s {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: #ff9a3d;
+  text-decoration: none;
+}
+#st .bars s {
+  background: #6ff0e4;
+}

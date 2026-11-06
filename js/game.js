@@ -1151,6 +1151,21 @@ const SONGS = [];
         for (const h of ps.ph)
           if (Math.abs(line - h.o) < h.w + 0.15) line = h.o + (line > h.o ? 1 : -1) * (h.w + 0.2);
     }
+    /* every bot has a nitro tank like yours: it fills slowly and they fire it in bursts */
+    if (c.nit == null) c.nit = 100;
+    if (state === 'race' && c.id !== 'b2') {
+      if (c.bb > 0) {
+        c.bb -= dt;
+        c.nit = Math.max(0, c.nit - dt * 30);
+        tgt *= 1.09;
+        if (c.nit <= 0) c.bb = 0;
+      } else {
+        c.nit = Math.min(100, c.nit + dt * 2.5);
+        if (c.nit >= 60 && time > 4 && Math.random() < dt * 0.12) c.bb = 1.5 + Math.random();
+      }
+    }
+    // and a car that dents: damage takes off top speed, just like yours
+    if (c.dmg > 0) tgt *= 1 - 0.18 * c.dmg;
     /* Speedy brakes early for bends, Turbo carries speed through them, Nitro goes in short bursts */
     if (c.id === 'b2') {
       c.bt = (c.bt == null ? 6 : c.bt) - dt;
@@ -1161,25 +1176,28 @@ const SONGS = [];
       if (c.bb > 0) {
         c.bb -= dt;
         tgt *= 1.09;
-      }
+        c.nit = Math.max(0, (c.nit || 0) - dt * 30);
+      } else c.nit = Math.min(100, (c.nit || 0) + dt * 6);
     }
     /* rivals fly too: 3 flights each, used when stuck behind traffic or now and then */
     if (c.fln == null) {
       c.fln = 3;
-      c.ft = 0;
+      c.flT = 0;
       c.alt = 0;
+      c.nit = 100;
+      c.dmg = 0;
       c.pz = 1;
       c.pf = 1;
       c.ps = 1;
     }
     if (state === 'race') {
-      if (c.ft > 0) c.ft -= dt;
+      if (c.flT > 0) c.flT -= dt;
       else if (c.fln > 0 && c.alt < 50 && Math.random() < dt * (ahead(c, c.o, SL * 7, 0) ? 0.6 : 0.03)) {
         c.fln--;
-        c.ft = FLYT;
+        c.flT = FLYT;
       }
     }
-    c.alt += ((c.ft > 0 ? ALT : 0) - c.alt) * Math.min(1, dt * (c.ft > 0 ? 1.4 : 5.5));
+    c.alt += ((c.flT > 0 ? ALT : 0) - c.alt) * Math.min(1, dt * (c.flT > 0 ? 1.4 : 5.5));
     if (c.zapT > 0) {
       c.zapT -= dt;
       tgt *= 0.35;
@@ -1232,6 +1250,7 @@ const SONGS = [];
       for (const h of seg.ph)
         if (Math.abs(c.o - h.o) < h.w + 0.1) {
           c.sp *= 0.9;
+          c.dmg = Math.min(1, (c.dmg || 0) + 0.04);
           break;
         }
     }
@@ -1806,10 +1825,11 @@ const SONGS = [];
   const dist = () => (pFin ? LAPS * TL : laps.length * TL + pos);
   function ranking() {
     const L = [
-      { me: 1, name: me ? me.name : 'You', col: me ? me.color : COLS[0], d: dist(), fin: pFin, ft: pFt },
+      { me: 1, name: me ? me.name : 'You', col: me ? me.color : COLS[0], d: dist(), fin: pFin, ft: pFt, nit, dm: dmg, bo: boost > 0.3 },
     ];
     for (const c of cars)
-      if (c.rv) L.push({ id: c.id, name: c.name, col: c.col, d: c.d, fin: c.fin, ft: c.ft });
+      if (c.rv)
+        L.push({ id: c.id, name: c.name, col: c.col, d: c.d, fin: c.fin, ft: c.ft, nit: c.nit, dm: c.dmg || 0, bo: c.bb > 0 });
       else if (c.net)
         L.push({
           id: c.id,
@@ -3446,7 +3466,7 @@ const SONGS = [];
     pwLbl();
     best.zapT = 2.5;
     best.sp *= 0.35;
-    best.ft = 0;
+    best.flT = 0;
     best.bb = 0;
     if (best.frzT > 0) {
       best.frzT = 0;
@@ -3527,7 +3547,7 @@ const SONGS = [];
     {
       best.zapT = 2.5;
       best.sp *= 0.35;
-      best.ft = 0;
+      best.flT = 0;
       best.bb = 0;
     }
   }
@@ -3938,6 +3958,7 @@ const SONGS = [];
       if (state === 'race' && !c.ghost && !c.net && air < 300 && !(c.alt > 300)) {
         const dxo = Math.abs(c.o - px);
         if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
+          if (c.rv) c.dmg = Math.min(1, (c.dmg || 0) + 0.1);
           speed = Math.max(c.sp, MAXS * 0.16) * 0.5;
           shake = reduce ? 0 : 14;
           px += px > c.o ? 0.12 : -0.12;
@@ -4107,7 +4128,16 @@ const SONGS = [];
           (j + 1) +
           ' ' +
           esc(r.name) +
-          '</span><i style="background:' +
+          (r.bo ? ' 🔥' : '') +
+          '</span>' +
+          (r.nit != null
+            ? '<em class="bars"><u style="width:' +
+              Math.round(r.nit) +
+              '%"></u><s style="width:' +
+              Math.round((1 - r.dm) * 100) +
+              '%"></s></em>'
+            : '') +
+          '<i style="background:' +
           r.col +
           '"></i></div>',
       )
