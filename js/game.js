@@ -1286,7 +1286,9 @@ const SONGS = [];
     pFrzT = 0,
     bfCd = 0,
     bfN = 0,
-    bzCd = 0;
+    bzCd = 0,
+    bzN = 0,
+    warn = null;
   let lv = 0,
     wallT = 0,
     scrT = 0,
@@ -1463,8 +1465,14 @@ const SONGS = [];
     mg,
     mNext = 0,
     mStep = 0;
-  const MEL = [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329],
-    BAS = [110, 110, 87.3, 98];
+  /* the game's own synth tunes (no recordings, no copyright): a new one every 32 bars.
+     m: 16-step melody (0 = rest), b: bass per bar, bpm, w: lead wave, d: drum pattern (k kick, h hat, s snare) */
+  const TUNES = [
+    { m: [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329], b: [110, 110, 87.3, 98], bpm: 140, w: 'triangle', d: 'k.h.s.h.k.h.s.hh' },
+    { m: [330, 0, 392, 440, 0, 494, 440, 392, 330, 0, 294, 330, 392, 0, 330, 294], b: [82.4, 98, 110, 73.4], bpm: 150, w: 'square', d: 'k.hkk.h.s.hk.hs' },
+    { m: [262, 330, 392, 523, 392, 330, 262, 330, 294, 349, 440, 587, 440, 349, 294, 349], b: [65.4, 87.3, 98, 87.3], bpm: 128, w: 'sawtooth', d: 'k...s...k.k.s..h' },
+    { m: [440, 523, 659, 523, 440, 392, 330, 392, 440, 523, 587, 659, 784, 659, 587, 523], b: [110, 98, 87.3, 82.4], bpm: 160, w: 'triangle', d: 'khshkhshkhshkhsh' },
+  ];
   function audio() {
     if (ac) {
       if (ac.state === 'suspended') ac.resume();
@@ -1547,10 +1555,16 @@ const SONGS = [];
     if (!ac) return;
     if (musicOn && !muted && !document.hidden && (!SONGS.length || (state === 'menu' && sp.paused))) {
       while (mNext < ac.currentTime + 0.3) {
-        const s = mStep % 16;
-        note(MEL[s], mNext, 0.2, 'triangle', 0.9);
-        if (s % 4 === 0) note(BAS[((mStep / 4) | 0) % 4], mNext, 0.5, 'sawtooth', 0.5);
-        mNext += 60 / 140 / 2;
+        const s = mStep % 16,
+          T = TUNES[((mStep / 512) | 0) % TUNES.length],
+          f = T.m[s],
+          dr = T.d[s];
+        if (f) note(f, mNext, 0.2, T.w, T.w === 'triangle' ? 0.9 : 0.45);
+        if (s % 4 === 0) note(T.b[((mStep / 4) | 0) % 4], mNext, 0.5, 'sawtooth', 0.5);
+        if (dr === 'k') note(55, mNext, 0.18, 'sine', 1.2);
+        else if (dr === 's') note(180, mNext, 0.12, 'square', 0.25);
+        else if (dr === 'h') note(5200, mNext, 0.03, 'square', 0.08);
+        mNext += 60 / T.bpm / 2;
         mStep++;
       }
     } else mNext = ac.currentTime + 0.05;
@@ -2109,6 +2123,8 @@ const SONGS = [];
     bfCd = 0;
     bfN = 0;
     bzCd = 0;
+    bzN = 0;
+    warn = null;
     pwLbl();
     wreck = false;
     dLock = false;
@@ -3471,25 +3487,21 @@ const SONGS = [];
     };
     for (const o of cars) if (o.rv && o !== c && !o.fin) look(o.z, o);
     if (!pFin) look((pos + PZ) % TL, 'me');
-    if (!best || (best === 'me' && bzCd > 0)) return;
-    if (best === 'me') bzCd = 8;
+    if (!best || (best === 'me' && (bzCd > 0 || bzN >= 2 || warn))) return;
     c.pz--;
+    if (best === 'me') {
+      // fair warning: you see it coming and can dodge by taking off
+      bzCd = 20;
+      bzN++;
+      warn = { k: 'zap', c, t: 0.8 };
+      toast('⚡ ' + c.name + ' is zapping you · Fly (R) to dodge!', 1);
+      blip(900, 0.12, 'square', 0.06);
+      return;
+    }
     zapFrom = c;
     zapTgt = best;
     zapFx = 0.55;
-    if (best === 'me') {
-      pZapT = 2.5;
-      if (pFrzT > 0) {
-        pFrzT = 0;
-        toast(c.name + ' zapped through your freeze!', 1);
-      } else toast(c.name + ' zapped you!', 1);
-      speed *= 0.4;
-      boost = 0;
-      if (ft > 0) ft = Math.max(0, ft - 1.5);
-      shake = reduce ? 0 : 8;
-      vib(120);
-      blip(1400, 0.35, 'sawtooth', 0.08);
-    } else {
+    {
       best.zapT = 2.5;
       best.sp *= 0.35;
       best.ft = 0;
@@ -3497,28 +3509,58 @@ const SONGS = [];
     }
   }
   function botFreeze(c) {
-    if (bfCd > 0 || bfN >= 2) return;
+    if (bfCd > 0 || bfN >= 1 || warn) return;
     bfN++;
     bfCd = 15;
     c.pf--;
+    warn = { k: 'frz', c, t: 1 };
+    toast('❄ ' + c.name + ' is freezing everyone · Fly (R) to dodge!', 1);
+    blip(1200, 0.12, 'square', 0.06);
+  }
+  function hitMe(w) {
+    const c = w.c;
+    if (w.k === 'zap') {
+      if (galt > 300) return toast('Dodged ' + c.name + '\'s zap!', 0, 'cp');
+      zapFrom = c;
+      zapTgt = 'me';
+      zapFx = 0.55;
+      pZapT = 2.5;
+      if (pFrzT > 0) pFrzT = 0;
+      toast(c.name + ' zapped you!', 1);
+      speed *= 0.6;
+      boost = 0;
+      shake = reduce ? 0 : 8;
+      vib(120);
+      blip(1400, 0.35, 'sawtooth', 0.08);
+      return;
+    }
     for (const o of cars)
       if (o.rv && o !== c && !(o.zapT > 0)) {
         o.frzT = 3;
         o.sp = 0;
         o.bb = 0;
       }
-    if (!pFin && !(pZapT > 0)) {
-      pFrzT = 3;
-      speed = 0;
+    const dodge = galt > 300;
+    if (!pFin && !(pZapT > 0) && !dodge) {
+      pFrzT = 2;
+      speed *= 0.3;
       boost = 0;
     }
-    frzT = 3;
-    toast(c.name + ' froze everyone!', 1);
+    frzT = 2;
+    toast(dodge ? 'Dodged the freeze!' : c.name + ' froze everyone!', dodge ? 0 : 1, dodge ? 'cp' : undefined);
     vib(90);
     blip(1800, 0.6, 'sine', 0.07);
   }
   function powers(dt) {
     if (state === 'menu' || state === 'count') ft = 0;
+    if (warn && state === 'race') {
+      warn.t -= dt;
+      if (warn.t <= 0) {
+        const w = warn;
+        warn = null;
+        hitMe(w);
+      }
+    } else if (state !== 'race') warn = null;
     if (state === 'race') {
       if (flyQ) takeOff();
       if (zapQ) zap();
@@ -3723,7 +3765,7 @@ const SONGS = [];
       // above the limit (nitro ending, damage): ease back, faster than gas and nitro can push
       if (speed > lim) speed = Math.max(lim, speed - MAXS * 1.2 * dt);
       speed = clamp(speed, 0, CAP);
-      if (pFrzT > 0 && state === 'race') speed = 0;
+      if (pFrzT > 0 && state === 'race') speed = Math.min(speed, MAXS * 0.25); // frozen: slowed to a crawl
       steer += ((pFrzT > 0 ? 0 : R - L + X) - steer) * Math.min(1, dt * 8);
     }
     CD = 0.84 - 0.12 * boost;

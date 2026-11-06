@@ -152,3 +152,7 @@ Accel, handling and damage are relative to the starter Coupe (1.00). Top speeds 
 ## One-file version
 
 `python3 tools/build-single.py` (needs `npm i esbuild`) writes `dist/index.html`: the whole game in a single ~10 MB file, with the code, styles, Three.js, car models packed inside. Open it straight from your files or host it anywhere. Sign-in, cloud saves, multiplayer and the web fonts still need the internet; everything else works offline.
+
+## Smoke test
+
+Every push runs `.github/workflows/smoke.yml`: it opens the game in a real browser, starts a race against bots, uses every power-up and fails if the page throws an error. Run it yourself with `python3 -m http.server 8765 &` then `node tools/smoke.mjs` (needs `npm i playwright`).
