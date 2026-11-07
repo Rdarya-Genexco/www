@@ -2774,15 +2774,26 @@ const SONGS = [];
     }
     showMenu();
   }
+  let ovScr = '';
   function ovSet(h) {
     if (window.view3d) window.view3d.showroom = null;
     if (onlineStop) {
       onlineStop();
       onlineStop = null;
     }
+    // a quick, smooth slide when you go to a different screen (the whole screen at once, nothing dark);
+    // redrawing the same screen (picking laps, pace, a colour) stays instant
+    const scr = (h.match(/<h1[^>]*>([^<]*)/) || [])[1] || h.slice(0, 40),
+      moved = scr !== ovScr && !ov.hidden && !reduce;
+    ovScr = scr;
     ov.innerHTML = h;
     ov.hidden = false;
     ov.scrollTop = 0;
+    if (moved) {
+      ov.classList.remove('flow');
+      void ov.offsetWidth;
+      ov.classList.add('flow');
+    }
   }
   function showMenu() {
     stopMp();

@@ -2037,3 +2037,17 @@ body:not(.play) #slp {
 #ov .opts > * {
   margin: 0;
 }
+/* moving between screens: the whole screen slides in together, quickly */
+#ov.flow > * {
+  animation: flowIn 0.18s ease-out;
+}
+@keyframes flowIn {
+  from {
+    opacity: 0.35;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
