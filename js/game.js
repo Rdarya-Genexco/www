@@ -32,8 +32,6 @@ const SONGS = [];
     ACC = MAXS / 5,
     BRK = -MAXS,
     DEC = -MAXS / 5,
-    OFFD = -MAXS / 2,
-    OFF = MAXS / 4,
     PZ = 840;
   let LAPS = 3,
     wx = 0;
@@ -1289,7 +1287,6 @@ const SONGS = [];
     hudT = 1,
     runId = 0,
     selCol = COLS[0],
-    placeNow = 0,
     loginOpen = false,
     selBody = 'coupe';
   /* starter cars [id, name] and supercars [id, name, price], all from js/cars.js */
@@ -1507,10 +1504,34 @@ const SONGS = [];
   /* the game's own synth tunes (no recordings, no copyright): a new one every 32 bars.
      m: 16-step melody (0 = rest), b: bass per bar, bpm, w: lead wave, d: drum pattern (k kick, h hat, s snare) */
   const TUNES = [
-    { m: [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329], b: [110, 110, 87.3, 98], bpm: 140, w: 'triangle', d: 'k.h.s.h.k.h.s.hh' },
-    { m: [330, 0, 392, 440, 0, 494, 440, 392, 330, 0, 294, 330, 392, 0, 330, 294], b: [82.4, 98, 110, 73.4], bpm: 150, w: 'square', d: 'k.hkk.h.s.hk.hs' },
-    { m: [262, 330, 392, 523, 392, 330, 262, 330, 294, 349, 440, 587, 440, 349, 294, 349], b: [65.4, 87.3, 98, 87.3], bpm: 128, w: 'sawtooth', d: 'k...s...k.k.s..h' },
-    { m: [440, 523, 659, 523, 440, 392, 330, 392, 440, 523, 587, 659, 784, 659, 587, 523], b: [110, 98, 87.3, 82.4], bpm: 160, w: 'triangle', d: 'khshkhshkhshkhsh' },
+    {
+      m: [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329],
+      b: [110, 110, 87.3, 98],
+      bpm: 140,
+      w: 'triangle',
+      d: 'k.h.s.h.k.h.s.hh',
+    },
+    {
+      m: [330, 0, 392, 440, 0, 494, 440, 392, 330, 0, 294, 330, 392, 0, 330, 294],
+      b: [82.4, 98, 110, 73.4],
+      bpm: 150,
+      w: 'square',
+      d: 'k.hkk.h.s.hk.hs',
+    },
+    {
+      m: [262, 330, 392, 523, 392, 330, 262, 330, 294, 349, 440, 587, 440, 349, 294, 349],
+      b: [65.4, 87.3, 98, 87.3],
+      bpm: 128,
+      w: 'sawtooth',
+      d: 'k...s...k.k.s..h',
+    },
+    {
+      m: [440, 523, 659, 523, 440, 392, 330, 392, 440, 523, 587, 659, 784, 659, 587, 523],
+      b: [110, 98, 87.3, 82.4],
+      bpm: 160,
+      w: 'triangle',
+      d: 'khshkhshkhshkhsh',
+    },
   ];
   function audio() {
     if (ac) {
@@ -1823,11 +1844,31 @@ const SONGS = [];
   const dist = () => (pFin ? LAPS * TL : laps.length * TL + pos);
   function ranking() {
     const L = [
-      { me: 1, name: me ? me.name : 'You', col: me ? me.color : COLS[0], d: dist(), fin: pFin, ft: pFt, nit, dm: dmg, bo: boost > 0.3 },
+      {
+        me: 1,
+        name: me ? me.name : 'You',
+        col: me ? me.color : COLS[0],
+        d: dist(),
+        fin: pFin,
+        ft: pFt,
+        nit,
+        dm: dmg,
+        bo: boost > 0.3,
+      },
     ];
     for (const c of cars)
       if (c.rv)
-        L.push({ id: c.id, name: c.name, col: c.col, d: c.d, fin: c.fin, ft: c.ft, nit: c.nit, dm: c.dmg || 0, bo: c.bb > 0 });
+        L.push({
+          id: c.id,
+          name: c.name,
+          col: c.col,
+          d: c.d,
+          fin: c.fin,
+          ft: c.ft,
+          nit: c.nit,
+          dm: c.dmg || 0,
+          bo: c.bb > 0,
+        });
       else if (c.net)
         L.push({
           id: c.id,
@@ -2277,7 +2318,6 @@ const SONGS = [];
       toast(mode !== 'tt' ? ORD[Math.min(pl, 5)] + ' · Chequered flag' : 'Chequered flag');
       fanfare();
       const id = runId,
-        t0 = Date.now(),
         chk = () => {
           if (id !== runId) return;
           finish();
@@ -3569,7 +3609,7 @@ const SONGS = [];
   function hitMe(w) {
     const c = w.c;
     if (w.k === 'zap') {
-      if (galt > 300) return toast('Dodged ' + c.name + '\'s zap!', 0, 'cp');
+      if (galt > 300) return toast('Dodged ' + c.name + "'s zap!", 0, 'cp');
       zapFrom = c;
       zapTgt = 'me';
       zapFx = 0.55;
@@ -3596,7 +3636,11 @@ const SONGS = [];
       boost = 0;
     }
     frzT = 2;
-    toast(dodge ? 'Dodged the freeze!' : c.name + ' froze everyone!', dodge ? 0 : 1, dodge ? 'cp' : undefined);
+    toast(
+      dodge ? 'Dodged the freeze!' : c.name + ' froze everyone!',
+      dodge ? 0 : 1,
+      dodge ? 'cp' : undefined,
+    );
     vib(90);
     blip(1800, 0.6, 'sine', 0.07);
   }
@@ -3646,7 +3690,8 @@ const SONGS = [];
       if (e) {
         e.style.opacity = sv < 0 ? 0 : 1;
         e.querySelector('u').style.width = Math.max(0, sv * 2) + '%';
-        e.querySelector('b').textContent = slipChg >= 1 ? 'SLINGSHOT READY · pull out or tap Sling' : 'SLIPSTREAM';
+        e.querySelector('b').textContent =
+          slipChg >= 1 ? 'SLINGSHOT READY · pull out or tap Sling' : 'SLIPSTREAM';
       }
     }
     const fz = reduce ? 0 : Math.round(Math.min(1, Math.max(frzT, pFrzT, 0)) * 20) / 20,
@@ -3840,7 +3885,6 @@ const SONGS = [];
             toast('Pothole', 1);
             crashSnd(0.18);
             blip(70, 0.18, 'square', 0.14);
-            const pw = Math.min(W * 0.24, H * 0.42);
             sparks.push({
               x: W / 2,
               y: H * 0.93,
@@ -4110,7 +4154,6 @@ const SONGS = [];
     }
     const rk = ranking(),
       i = rk.findIndex(r => r.me);
-    placeNow = i;
     $('pos').textContent = (ORD[i] || i + 1 + 'th') + ' of ' + rk.length;
     const tot = LAPS * TL;
     let g = '';

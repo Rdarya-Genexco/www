@@ -18,7 +18,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="W. Wheels" />
     <!-- the font ships with the game (assets/fonts), so text never jumps from a big fallback font to this one -->
-    <link rel="preload" href="assets/fonts/big-shoulders-display.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="assets/fonts/big-shoulders-display.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="stylesheet" href="css/style.css" />
     <!-- game.js first: it listens for the sign-in events that cloud.js sends -->
     <!-- every car (names, prices, stats, looks): edit js/cars.js -->
@@ -57,7 +63,8 @@
       setTimeout(() => window.bootDone(), 12000);
       try {
         const c = document.createElement('canvas');
-        if (!(c.getContext('webgl2') || c.getContext('webgl'))) addEventListener('load', () => window.bootDone('models'));
+        if (!(c.getContext('webgl2') || c.getContext('webgl')))
+          addEventListener('load', () => window.bootDone('models'));
       } catch (e) {}
     </script>
     <canvas id="c"></canvas>
@@ -98,7 +105,9 @@
         ><i><u id="df"></u></i>
       </div>
       <div id="toast"></div>
-      <div id="slp"><b>SLIPSTREAM</b><i><u></u></i></div>
+      <div id="slp">
+        <b>SLIPSTREAM</b><i><u></u></i>
+      </div>
     </div>
     <div id="pwfx" aria-hidden="true"></div>
     <button id="mu" aria-label="Toggle music" title="Music (M mutes everything)">♪ Music On</button>
@@ -114,10 +123,22 @@
         ><button data-k="N" aria-label="Nitro">Nitro</button>
       </div>
       <div class="pw">
-        <button data-p="fly" class="dr fl" id="flyb" data-key="R" aria-label="Fly (R)" title="Fly (R)">Fly 3</button
-        ><button data-p="zap" class="dr zp" id="zapb" data-key="E" aria-label="Zap (E)" title="Zap (E)">⚡ 1</button
-        ><button data-p="frz" class="dr fz" id="frzb" data-key="F" aria-label="Freeze (F)" title="Freeze (F)">❄ 1</button
-        ><button data-p="sl" class="dr sl" id="slb" data-key="V" aria-label="Slingshot (V)" title="Slingshot (V)">Sling 1</button>
+        <button data-p="fly" class="dr fl" id="flyb" data-key="R" aria-label="Fly (R)" title="Fly (R)">
+          Fly 3</button
+        ><button data-p="zap" class="dr zp" id="zapb" data-key="E" aria-label="Zap (E)" title="Zap (E)">
+          ⚡ 1</button
+        ><button data-p="frz" class="dr fz" id="frzb" data-key="F" aria-label="Freeze (F)" title="Freeze (F)">
+          ❄ 1</button
+        ><button
+          data-p="sl"
+          class="dr sl"
+          id="slb"
+          data-key="V"
+          aria-label="Slingshot (V)"
+          title="Slingshot (V)"
+        >
+          Sling 1
+        </button>
       </div>
     </div>
     <!-- multiplayer chat: message feed, chat button and the typing bar -->

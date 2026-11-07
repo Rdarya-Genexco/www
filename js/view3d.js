@@ -431,19 +431,25 @@ function start() {
         const h = ray.intersectObject(car, true).find(h => !h.object.userData.spin);
         return h ? h.point : fb;
       },
-      backZ = (x, y) => surf(new THREE.Vector3(x, y, 9), new THREE.Vector3(0, 0, -1), { z: s.L / 2 - 0.3 }).z + 0.015,
-      sideX = (sx, y, z) => surf(new THREE.Vector3(sx * 9, y, z), new THREE.Vector3(-sx, 0, 0), { x: sx * s.W / 2 }).x;
+      backZ = (x, y) =>
+        surf(new THREE.Vector3(x, y, 9), new THREE.Vector3(0, 0, -1), { z: s.L / 2 - 0.3 }).z + 0.015,
+      sideX = (sx, y, z) =>
+        surf(new THREE.Vector3(sx * 9, y, z), new THREE.Vector3(-sx, 0, 0), { x: (sx * s.W) / 2 }).x;
     const { L, W, r } = s,
       f = -L / 2,
       b = L / 2,
-      rz = b - 0.14,
       ly = r + s.deck * 0.62,
       acc =
         s.acc &&
-        new THREE.MeshStandardMaterial({ color: s.acc, emissive: s.acc, emissiveIntensity: s.acc === '#f2c418' ? 0.25 : 1.6 });
+        new THREE.MeshStandardMaterial({
+          color: s.acc,
+          emissive: s.acc,
+          emissiveIntensity: s.acc === '#f2c418' ? 0.25 : 1.6,
+        });
     // tail lights
     if (s.lights === 'bar') g.add(box(W * 0.78, 0.045, 0.04, M.tail, 0, ly + 0.05, backZ(0, ly + 0.05)));
-    else if (s.lights === 'thin') g.add(box(W * 0.86, 0.035, 0.04, M.tail, 0, ly + 0.06, backZ(0, ly + 0.06)));
+    else if (s.lights === 'thin')
+      g.add(box(W * 0.86, 0.035, 0.04, M.tail, 0, ly + 0.06, backZ(0, ly + 0.06)));
     else if (s.lights === 'quad' || s.lights === 'ring')
       for (const x of [-0.7, -0.45, 0.45, 0.7]) {
         const l =
@@ -473,8 +479,11 @@ function start() {
     // rear wing: the base model already has one, so only the big race wing (level 3) is added
     if (s.wing === 3) {
       const wy = r + s.deck + (s.wing === 3 ? 0.5 : s.wing === 2 ? 0.36 : 0.2);
-      for (const sx of [-0.45, 0.45]) g.add(box(0.05, wy - r - s.deck + 0.1, 0.1, M.black, sx, (wy + r + s.deck) / 2, b - 0.4));
-      g.add(rbox(W * (s.wing === 3 ? 1.02 : 0.9), 0.05, 0.4, s.wing === 3 ? pm : M.black, 0, wy, b - 0.4, 0.03));
+      for (const sx of [-0.45, 0.45])
+        g.add(box(0.05, wy - r - s.deck + 0.1, 0.1, M.black, sx, (wy + r + s.deck) / 2, b - 0.4));
+      g.add(
+        rbox(W * (s.wing === 3 ? 1.02 : 0.9), 0.05, 0.4, s.wing === 3 ? pm : M.black, 0, wy, b - 0.4, 0.03),
+      );
     }
     // horseshoe grille on the nose
     if (s.horseshoe) {
@@ -530,7 +539,7 @@ function start() {
       step = (s.L * 0.96) / n,
       skip = o => {
         const mt = [].concat(o.material)[0] || {};
-        return o.userData.spin || mt.transparent || /glass|window|wind/i.test(o.name + " " + mt.name);
+        return o.userData.spin || mt.transparent || /glass|window|wind/i.test(o.name + ' ' + mt.name);
       };
     const hitAt = (x, z) => {
       ray.set(new THREE.Vector3(x, 5, z), down);
@@ -1945,12 +1954,20 @@ function start() {
     }
     const from = z.from && mesh(z.from),
       a = to.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
-      b = from && from.visible ? from.position.clone().add(new THREE.Vector3(0, 1.6, 0)) : a.clone().add(new THREE.Vector3(0, 30, 0)),
+      b =
+        from && from.visible
+          ? from.position.clone().add(new THREE.Vector3(0, 1.6, 0))
+          : a.clone().add(new THREE.Vector3(0, 30, 0)),
       P = bolt.geometry.attributes.position;
     for (let i = 0; i < 12; i++) {
       const p = b.clone().lerp(a, i / 11),
         j = i && i < 11 ? 1.2 : 0;
-      P.setXYZ(i, p.x + (Math.random() - 0.5) * j, p.y + (Math.random() - 0.5) * j, p.z + (Math.random() - 0.5) * j);
+      P.setXYZ(
+        i,
+        p.x + (Math.random() - 0.5) * j,
+        p.y + (Math.random() - 0.5) * j,
+        p.z + (Math.random() - 0.5) * j,
+      );
     }
     P.needsUpdate = true;
     bolt.visible = true;

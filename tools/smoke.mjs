@@ -6,14 +6,18 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const URL = process.env.GAME_URL || 'http://localhost:8765/index.html';
 const errors = [];
 const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'] });
-const page = await (await browser.newContext({ viewport: { width: 480, height: 300 }, serviceWorkers: 'block' })).newPage();
+const page = await (
+  await browser.newContext({ viewport: { width: 480, height: 300 }, serviceWorkers: 'block' })
+).newPage();
 page.on('pageerror', e => errors.push(e.message));
 await page.route(/gstatic|googleapis|firebase/, r => r.abort()); // online features are optional
 await page.goto(URL);
 await page.evaluate(() => {
   localStorage.setItem(
     'ghatrun-profiles',
-    JSON.stringify({ t: { name: 'Test', color: '#ff5a5a', body: 'toro', owned: ['toro'], points: 0, upg: {}, history: [] } }),
+    JSON.stringify({
+      t: { name: 'Test', color: '#ff5a5a', body: 'toro', owned: ['toro'], points: 0, upg: {}, history: [] },
+    }),
   );
   localStorage.setItem('ghatrun-user', JSON.stringify('t'));
   localStorage.setItem('ghatrun-ctl', JSON.stringify('keys'));
@@ -27,7 +31,11 @@ for (const k of ['KeyR', 'KeyE', 'KeyF', 'KeyV', 'Space']) {
   await page.keyboard.press(k);
   await page.waitForTimeout(1500);
 }
-const st = await page.evaluate(() => ({ state: window.__game.state, speed: window.__game.speed, has3d: !!(window.view3d && window.view3d.ready) }));
+const st = await page.evaluate(() => ({
+  state: window.__game.state,
+  speed: window.__game.speed,
+  has3d: !!(window.view3d && window.view3d.ready),
+}));
 await browser.close();
 console.log(JSON.stringify(st));
 if (errors.length) {

@@ -1859,8 +1859,11 @@ body:not(.tui).play #tc .pw button {
   inset: 0;
   pointer-events: none;
   z-index: 2;
-  background:
-    radial-gradient(ellipse at center, rgba(190, 235, 255, 0) 45%, rgba(200, 240, 255, calc(var(--frz, 0) * 0.6)) 100%),
+  background: radial-gradient(
+      ellipse at center,
+      rgba(190, 235, 255, 0) 45%,
+      rgba(200, 240, 255, calc(var(--frz, 0) * 0.6)) 100%
+    ),
     rgba(190, 160, 255, var(--zap, 0));
 }
 #pwfx::after {
@@ -1919,7 +1922,10 @@ body:not(.play) #slp {
     border-radius: 5px;
     background: var(--ink);
     color: var(--night);
-    font: 800 13px/20px 'Big Shoulders Display', Impact, sans-serif;
+    font:
+      800 13px/20px 'Big Shoulders Display',
+      Impact,
+      sans-serif;
     text-align: center;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   }
