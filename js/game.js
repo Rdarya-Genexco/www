@@ -129,8 +129,6 @@ const SONGS = [];
 
   /* ---------- installable app: offline files (sw.js) and the browser's install prompt ---------- */
   let installPrompt = null;
-  const WIN_SETUP =
-    'https://github.com/Rdarya-Genexco/www/releases/latest/download/WorldwideWheels-Setup.exe';
   // (not inside the Windows app, which already ships every file)
   if (
     'serviceWorker' in navigator &&
