@@ -2051,3 +2051,7 @@ body:not(.play) #slp {
     transform: none;
   }
 }
+/* the Garage's 3D studio is drawn by the 3D view, so its screen appears instantly to keep both halves together */
+#ov.flow:has(.stage) > * {
+  animation: none;
+}
