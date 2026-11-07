@@ -1507,11 +1507,6 @@ const SONGS = [];
   const TUNES = [
     {
       n: 'Sunset Highway',
-      ly: [
-        'Sun is going down, the road is gold',
-        'Hands on the wheel, never letting go',
-        'Sunset highway, take me home',
-      ],
       m: [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329],
       b: [110, 110, 87.3, 98],
       bpm: 140,
@@ -1520,7 +1515,6 @@ const SONGS = [];
     },
     {
       n: 'Night Drive',
-      ly: ['City lights are flying by', 'Engines singing through the night', 'Night drive, feel alive'],
       m: [330, 0, 392, 440, 0, 494, 440, 392, 330, 0, 294, 330, 392, 0, 330, 294],
       b: [82.4, 98, 110, 73.4],
       bpm: 150,
@@ -1529,7 +1523,6 @@ const SONGS = [];
     },
     {
       n: 'Neon Coast',
-      ly: ['Neon waves along the shore', "Faster than we've gone before", 'Neon coast, ride the most'],
       m: [262, 330, 392, 523, 392, 330, 262, 330, 294, 349, 440, 587, 440, 349, 294, 349],
       b: [65.4, 87.3, 98, 87.3],
       bpm: 128,
@@ -1538,7 +1531,6 @@ const SONGS = [];
     },
     {
       n: 'Turbo Rush',
-      ly: ['Turbo rush, feel the push', 'Nothing in the world can hold us', 'Turbo rush, go go go'],
       m: [440, 523, 659, 523, 440, 392, 330, 392, 440, 523, 587, 659, 784, 659, 587, 523],
       b: [110, 98, 87.3, 82.4],
       bpm: 160,
@@ -1547,7 +1539,6 @@ const SONGS = [];
     },
     {
       n: 'Lo-fi Lanes',
-      ly: ['Easy roads and open skies', 'Take it slow and take your time', 'Lo-fi lanes, rolling on'],
       m: [392, 0, 330, 0, 294, 0, 330, 392, 0, 440, 0, 392, 330, 0, 294, 0],
       b: [98, 82.4, 73.4, 82.4],
       bpm: 92,
@@ -1557,7 +1548,6 @@ const SONGS = [];
     },
     {
       n: 'Coastal Cruise',
-      ly: ['Windows down and ocean breeze', 'Cruising by the palm trees', 'Coastal cruise, nothing to lose'],
       m: [523, 0, 659, 587, 0, 523, 440, 0, 494, 0, 587, 523, 0, 494, 440, 0],
       b: [87.3, 110, 98, 82.4],
       bpm: 110,
@@ -1650,7 +1640,6 @@ const SONGS = [];
   function nextSong() {
     if (!ac) audio();
     mStep = (((mStep / 512) | 0) + 1) * 512;
-    if (window.speechSynthesis) speechSynthesis.cancel();
     if (!musicOn || muted) {
       musicOn = true;
       muted = false;
@@ -1671,23 +1660,6 @@ const SONGS = [];
     clearTimeout(radioT);
     radioT = setTimeout(() => e.classList.remove('on'), 3500);
   }
-  /* original lyrics, sung by the device's speech voice (no recordings, no copyright) */
-  function sing(line, T) {
-    try {
-      if (!window.speechSynthesis || document.hidden) return;
-      speechSynthesis.cancel();
-      // each word on its own note, following the tune's melody, so it sounds sung rather than read out
-      const notes = T.m.filter(Boolean);
-      line.split(' ').forEach((w, i) => {
-        const f = notes[i % notes.length],
-          u = new SpeechSynthesisUtterance(w);
-        u.pitch = Math.max(0.2, Math.min(2, 0.4 + (f - 200) / 300));
-        u.rate = T.bpm > 130 ? 1.15 : 0.95;
-        u.volume = 1;
-        speechSynthesis.speak(u);
-      });
-    } catch (e) {}
-  }
   function musicTick() {
     if (!ac) return;
     if (musicOn && !muted && !document.hidden && (!SONGS.length || (state === 'menu' && sp.paused))) {
@@ -1702,8 +1674,6 @@ const SONGS = [];
           radioOn = ti;
           radioName(T.n);
         }
-        // vocals: the device voice sings a line every 4 bars
-        if (s === 0 && T.ly && ((mStep / 16) | 0) % 4 === 1) sing(T.ly[((mStep / 64) | 0) % T.ly.length], T);
         if (f) note(f, mNext, T.soft ? 0.35 : 0.2, T.w, T.w === 'square' ? 0.45 : 0.8);
         if (s % 4 === 0) note(T.b[((mStep / 4) | 0) % 4], mNext, 0.5, T.soft ? 'triangle' : 'sawtooth', 0.5);
         // soft chord pad under each bar, like a band behind the lead
@@ -1719,7 +1689,6 @@ const SONGS = [];
       }
     } else {
       mNext = ac.currentTime + 0.05;
-      if (window.speechSynthesis && speechSynthesis.speaking) speechSynthesis.cancel(); // music off or muted: stop singing
     }
     setTimeout(musicTick, 100);
   }
