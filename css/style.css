@@ -2034,3 +2034,14 @@ body:not(.play) #slp {
     display: none;
   }
 }
+/* menu: laps, rivals, pace and settings on one row under the options */
+#ov .opts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 22px;
+  width: min(860px, 100%);
+}
+#ov .opts > * {
+  margin: 0;
+}

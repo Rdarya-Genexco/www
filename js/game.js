@@ -2888,7 +2888,7 @@ const SONGS = [];
             '" download><b>⬇ Download for Windows</b><small>Install the game as a Windows app · setup .exe</small></a>'
           : '') +
         '</div>' +
-        '<div class="chips">Laps ' +
+        '<div class="opts"><div class="chips">Laps ' +
         [1, 3, 5]
           .map(
             v =>
@@ -2932,7 +2932,7 @@ const SONGS = [];
         '</div>' +
         '<div class="row"><button class="chip" data-a="settings">Settings</button>' +
         (installPrompt ? '<button class="chip" data-a="install">⬇ Install app</button>' : '') +
-        '</div>' +
+        '</div></div>' +
         '<span class="hint k">Steer with the arrow keys. Space nitro, S brake, D drift on/off, M mute, Esc quit.</span>' +
         '<span class="hint">Power-ups: R fly over the traffic (3 a race), E zap the car ahead, F freeze every other car for 3 s, V slingshot (once a race each). Sit in a rival\'s slipstream to fill the blue bar, then pull out for a free Slingshot. Rivals have zap, freeze and slingshot too.</span>' +
         '<span class="hint t">Drag the joystick (or hold the arrows) to steer and press Nitro to boost. Gas is automatic.</span>',
