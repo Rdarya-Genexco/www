@@ -331,8 +331,6 @@ body.play #mu {
   outline: 3px solid var(--ink);
   outline-offset: 3px;
 }
-.mb,
-.chip,
 .card,
 #nm {
   -webkit-backdrop-filter: blur(6px);
@@ -350,7 +348,6 @@ body.play #mu {
 .chip {
   border-radius: 999px;
   padding: 4px 16px 2px;
-  transition: background 0.15s;
 }
 .chip:hover:not(.on) {
   background: rgba(255, 244, 224, 0.14);
@@ -1335,12 +1332,7 @@ h1 {
     transform: none;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  /* the whole menu fades in together (no one-after-another delays) */
-  #ov > * {
-    animation: rise 0.25s ease-out both;
-  }
-}
+/* the menu appears instantly: no entrance animation */
 body.tui #mu {
   top: calc(166px + env(safe-area-inset-top, 0px));
 }
