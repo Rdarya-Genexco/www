@@ -2085,3 +2085,28 @@ body.play #radio {
   bottom: auto;
   top: calc(64px + env(safe-area-inset-top, 0px));
 }
+/* radio button on the side: shows the song playing, tap for the next one */
+#radiob {
+  position: fixed;
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  max-width: 170px;
+  padding: 6px 12px 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 244, 224, 0.4);
+  background: rgba(19, 17, 58, 0.75);
+  color: var(--ink);
+  font:
+    700 15px 'Big Shoulders Display',
+    Impact,
+    sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#radiob:hover {
+  background: rgba(255, 122, 61, 0.35);
+}

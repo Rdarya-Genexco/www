@@ -1491,6 +1491,7 @@ const SONGS = [];
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => b.addEventListener(t, offf));
   });
   addEventListener('contextmenu', e => e.preventDefault());
+  $('radiob').addEventListener('click', () => nextSong());
 
   /* ---------- audio: engine, sfx, music ---------- */
   let ac,
@@ -1622,7 +1623,7 @@ const SONGS = [];
       o2.start();
       lfo.start();
       mg = ac.createGain();
-      mg.gain.value = 0.22; // loud enough to hear over the engine
+      mg.gain.value = 0.5; // loud: well over the engine
       mg.connect(ac.destination);
       mNext = ac.currentTime + 0.1;
       musicTick();
@@ -1646,7 +1647,19 @@ const SONGS = [];
   /* radio: the game's own instrumental tunes play one after another; the song name shows when it changes */
   let radioOn = -1,
     radioT = 0;
+  function nextSong() {
+    if (!ac) audio();
+    mStep = (((mStep / 512) | 0) + 1) * 512;
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    if (!musicOn || muted) {
+      musicOn = true;
+      muted = false;
+      muLbl();
+    }
+  }
   function radioName(n) {
+    const rb = $('radiob');
+    if (rb) rb.textContent = '📻 ' + n + ' ⏭';
     let e = $('radio');
     if (!e) {
       e = document.createElement('div');
@@ -1663,11 +1676,16 @@ const SONGS = [];
     try {
       if (!window.speechSynthesis || document.hidden) return;
       speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(line);
-      u.rate = T.bpm > 130 ? 1.05 : 0.9;
-      u.pitch = 1.3;
-      u.volume = 0.8;
-      speechSynthesis.speak(u);
+      // each word on its own note, following the tune's melody, so it sounds sung rather than read out
+      const notes = T.m.filter(Boolean);
+      line.split(' ').forEach((w, i) => {
+        const f = notes[i % notes.length],
+          u = new SpeechSynthesisUtterance(w);
+        u.pitch = Math.max(0.2, Math.min(2, 0.4 + (f - 200) / 300));
+        u.rate = T.bpm > 130 ? 1.15 : 0.95;
+        u.volume = 1;
+        speechSynthesis.speak(u);
+      });
     } catch (e) {}
   }
   function musicTick() {
