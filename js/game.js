@@ -2763,31 +2763,16 @@ const SONGS = [];
   }
 
   /* ---------- menus ---------- */
-  /* switching map or country: fade out, build the new place behind the fade, fade back in */
-  let mapFading = false;
+  /* switching map or country: straight to the new place, no fade */
   function pickMap(id) {
-    if (id === mapSel || mapFading) return showMenu();
-    const f = $('fade');
-    mapFading = true;
-    if (f) f.classList.add('on');
-    setTimeout(
-      () => {
-        loadMap(id);
-        pos = 0;
-        px = 0;
-        cpNext = 0;
-        save();
-        showMenu();
-        // give the 3D view two frames to build the new scenery while the screen is still dark
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            if (f) f.classList.remove('on');
-            mapFading = false;
-          }),
-        );
-      },
-      f && !reduce ? 260 : 0,
-    );
+    if (id !== mapSel) {
+      loadMap(id);
+      pos = 0;
+      px = 0;
+      cpNext = 0;
+      save();
+    }
+    showMenu();
   }
   function ovSet(h) {
     if (window.view3d) window.view3d.showroom = null;
