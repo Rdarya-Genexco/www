@@ -2061,3 +2061,27 @@ body:not(.play) #slp {
 #ov.flow:has(.stage) > * {
   animation: none;
 }
+/* radio: name of the song now playing */
+#radio {
+  position: fixed;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 4px 14px 3px;
+  border-radius: 999px;
+  background: rgba(19, 17, 58, 0.75);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+#radio.on {
+  opacity: 1;
+}
+body.play #radio {
+  bottom: auto;
+  top: calc(64px + env(safe-area-inset-top, 0px));
+}

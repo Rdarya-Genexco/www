@@ -1505,6 +1505,7 @@ const SONGS = [];
      m: 16-step melody (0 = rest), b: bass per bar, bpm, w: lead wave, d: drum pattern (k kick, h hat, s snare) */
   const TUNES = [
     {
+      n: 'Sunset Highway',
       m: [220, 277, 329, 392, 440, 392, 329, 277, 246, 329, 392, 466, 523, 466, 392, 329],
       b: [110, 110, 87.3, 98],
       bpm: 140,
@@ -1512,6 +1513,7 @@ const SONGS = [];
       d: 'k.h.s.h.k.h.s.hh',
     },
     {
+      n: 'Night Drive',
       m: [330, 0, 392, 440, 0, 494, 440, 392, 330, 0, 294, 330, 392, 0, 330, 294],
       b: [82.4, 98, 110, 73.4],
       bpm: 150,
@@ -1519,6 +1521,7 @@ const SONGS = [];
       d: 'k.hkk.h.s.hk.hs',
     },
     {
+      n: 'Neon Coast',
       m: [262, 330, 392, 523, 392, 330, 262, 330, 294, 349, 440, 587, 440, 349, 294, 349],
       b: [65.4, 87.3, 98, 87.3],
       bpm: 128,
@@ -1526,11 +1529,30 @@ const SONGS = [];
       d: 'k...s...k.k.s..h',
     },
     {
+      n: 'Turbo Rush',
       m: [440, 523, 659, 523, 440, 392, 330, 392, 440, 523, 587, 659, 784, 659, 587, 523],
       b: [110, 98, 87.3, 82.4],
       bpm: 160,
       w: 'triangle',
       d: 'khshkhshkhshkhsh',
+    },
+    {
+      n: 'Lo-fi Lanes',
+      m: [392, 0, 330, 0, 294, 0, 330, 392, 0, 440, 0, 392, 330, 0, 294, 0],
+      b: [98, 82.4, 73.4, 82.4],
+      bpm: 92,
+      w: 'sine',
+      d: 'k...s..kk...s...',
+      soft: 1,
+    },
+    {
+      n: 'Coastal Cruise',
+      m: [523, 0, 659, 587, 0, 523, 440, 0, 494, 0, 587, 523, 0, 494, 440, 0],
+      b: [87.3, 110, 98, 82.4],
+      bpm: 110,
+      w: 'triangle',
+      d: 'k.h.s.h.k.hks.h.',
+      soft: 1,
     },
   ];
   function audio() {
@@ -1611,19 +1633,45 @@ const SONGS = [];
     o.start(t);
     o.stop(t + d + 0.02);
   }
+  /* radio: the game's own instrumental tunes play one after another; the song name shows when it changes */
+  let radioOn = -1,
+    radioT = 0;
+  function radioName(n) {
+    let e = $('radio');
+    if (!e) {
+      e = document.createElement('div');
+      e.id = 'radio';
+      document.body.appendChild(e);
+    }
+    e.textContent = '📻 ' + n;
+    e.classList.add('on');
+    clearTimeout(radioT);
+    radioT = setTimeout(() => e.classList.remove('on'), 3500);
+  }
   function musicTick() {
     if (!ac) return;
     if (musicOn && !muted && !document.hidden && (!SONGS.length || (state === 'menu' && sp.paused))) {
       while (mNext < ac.currentTime + 0.3) {
         const s = mStep % 16,
-          T = TUNES[((mStep / 512) | 0) % TUNES.length],
+          ti = ((mStep / 512) | 0) % TUNES.length,
+          T = TUNES[ti],
           f = T.m[s],
-          dr = T.d[s];
-        if (f) note(f, mNext, 0.2, T.w, T.w === 'triangle' ? 0.9 : 0.45);
-        if (s % 4 === 0) note(T.b[((mStep / 4) | 0) % 4], mNext, 0.5, 'sawtooth', 0.5);
+          dr = T.d[s],
+          bar = (60 / T.bpm / 2) * 16;
+        if (ti !== radioOn) {
+          radioOn = ti;
+          radioName(T.n);
+        }
+        if (f) note(f, mNext, T.soft ? 0.35 : 0.2, T.w, T.w === 'square' ? 0.45 : 0.8);
+        if (s % 4 === 0) note(T.b[((mStep / 4) | 0) % 4], mNext, 0.5, T.soft ? 'triangle' : 'sawtooth', 0.5);
+        // soft chord pad under each bar, like a band behind the lead
+        if (s === 0) {
+          const r = T.b[((mStep / 4) | 0) % 4] * 2;
+          for (const k of [1, 1.26, 1.5]) note(r * k, mNext, bar * 0.95, 'sine', 0.16);
+        }
         if (dr === 'k') note(55, mNext, 0.18, 'sine', 1.2);
-        else if (dr === 's') note(180, mNext, 0.12, 'square', 0.25);
-        else if (dr === 'h') note(5200, mNext, 0.03, 'square', 0.08);
+        else if (dr === 's') note(180, mNext, 0.12, 'square', T.soft ? 0.15 : 0.25);
+        else if (dr === 'h') note(5200, mNext, 0.03, 'square', 0.06);
         mNext += 60 / T.bpm / 2;
         mStep++;
       }
