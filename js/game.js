@@ -1316,6 +1316,7 @@ const SONGS = [];
     frzT = 0,
     slN = 1,
     slQ = 0,
+    repQ = 0,
     slipChg = 0,
     padT = 0,
     pZapT = 0,
@@ -1453,6 +1454,7 @@ const SONGS = [];
       if (e.code === 'KeyE' || e.code === 'KeyQ') zapQ = 1;
       if (e.code === 'KeyF') frzQ = 1;
       if (e.code === 'KeyV') slQ = 1;
+      if (e.code === 'KeyH') repQ = 1;
     }
     if (e.code === 'KeyM') {
       muted = !muted;
@@ -1473,6 +1475,7 @@ const SONGS = [];
       if (p === 'fly') flyQ = 1;
       else if (p === 'zap') zapQ = 1;
       else if (p === 'frz') frzQ = 1;
+      else if (p === 'rep') repQ = 1;
       else slQ = 1;
     }),
   );
@@ -3039,7 +3042,7 @@ const SONGS = [];
         (installPrompt ? '<button class="chip" data-a="install">⬇ Install app</button>' : '') +
         '</div></div>' +
         '<span class="hint k">Steer with the arrow keys. Space nitro, S brake, D drift on/off, M mute, Esc quit.</span>' +
-        '<span class="hint">Power-ups: R fly over the traffic (3 a race), E zap the car ahead, F freeze every other car for 3 s, V slingshot (once a race each). Sit in a rival\'s slipstream to fill the blue bar, then pull out for a free Slingshot. Rivals have zap, freeze and slingshot too.</span>' +
+        '<span class="hint">Power-ups: R fly over the traffic (3 a race), E zap the car ahead, F freeze every other car for 3 s, V slingshot (once a race each). Sit in a rival\'s slipstream to fill the blue bar, then pull out for a free Slingshot. Rivals have zap, freeze and slingshot too. H repairs your car mid-race for some points.</span>' +
         '<span class="hint t">Drag the joystick (or hold the arrows) to steer and press Nitro to boost. Gas is automatic.</span>',
     );
   }
@@ -3543,6 +3546,21 @@ const SONGS = [];
     set('zapb', '⚡ ' + zaps, zaps);
     set('frzb', '❄ ' + frz, frz);
     set('slb', 'Sling ' + slN, slN);
+    set('repb', '🔧 ' + repCost() + ' pts', dmg > 0.02 ? 1 : 0);
+  }
+  /* repair shop: fix your car in the middle of a race for some of your points (more damage, higher bill) */
+  const repCost = () => Math.max(5, Math.ceil(dmg * 40));
+  function repair() {
+    if (dmg <= 0.02) return toast('Car is already fine', 0, 'cp');
+    const c = repCost();
+    if (!me || me.points < c) return toast('Repair costs ' + c + ' pts · not enough points', 1);
+    me.points -= c;
+    dmg = 0;
+    save();
+    pwLbl();
+    toast('Repaired · −' + c + ' pts', 0, 'cp');
+    blip(660, 0.12, 'square', 0.06);
+    blip(990, 0.18, 'square', 0.06);
   }
   function takeOff() {
     if (ft > 0) return;
@@ -3721,8 +3739,19 @@ const SONGS = [];
       if (zapQ) zap();
       if (frzQ) freeze();
       if (slQ) sling(true);
+      if (repQ) repair();
     }
-    flyQ = zapQ = frzQ = slQ = 0;
+    flyQ = zapQ = frzQ = slQ = repQ = 0;
+    // tell the driver about the repair shop when the car gets hurt (at 30%, 60% and 85% damage)
+    const lvl = dmg >= 0.85 ? 3 : dmg >= 0.6 ? 2 : dmg >= 0.3 ? 1 : 0;
+    if (state === 'race' && lvl > (pwHud.w || 0))
+      toast('Car ' + Math.round((1 - dmg) * 100) + '% · tap 🔧 Repair (H) for ' + repCost() + ' pts', 1);
+    pwHud.w = state === 'race' ? Math.max(lvl, dmg < 0.05 ? 0 : pwHud.w || 0) : 0;
+    if (state === 'race' && dmg < 0.05) pwHud.w = 0;
+    if (state === 'race' && Math.round(dmg * 50) !== pwHud.d) {
+      pwHud.d = Math.round(dmg * 50);
+      pwLbl();
+    }
     if (frzT > 0) frzT -= dt;
     if (pZapT > 0) pZapT -= dt;
     if (pFrzT > 0) pFrzT -= dt;
