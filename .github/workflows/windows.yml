@@ -45,7 +45,9 @@ jobs:
         run: |
           # app version from the tag (v1.2.3 -> 1.2.3)
           if [[ -n "$VERSION" ]]; then npm version "${VERSION#v}" --no-git-tag-version --allow-same-version; fi
-          npm install --no-audit --no-fund
+          # Electron's download server sometimes times out: retry the install a few times
+          for i in 1 2 3 4; do npm install --no-audit --no-fund && break; echo "install failed, retry $i"; sleep $((i * 20)); done
+          test -d node_modules/electron/dist
           npx electron-builder --win --publish never
       - uses: actions/upload-artifact@v4
         with:
