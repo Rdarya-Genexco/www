@@ -3170,9 +3170,11 @@ const SONGS = [];
             A.n +
             ' · ' +
             (100 + A.a * 100) +
-            '%</b><small>' +
+            '% · ' +
             A.p +
-            ' pts · for your next race</small></button>',
+            ' pts</b><small>Costs ' +
+            A.p +
+            ' points · lasts your next race</small></button>',
         ).join('') +
         '</div>' +
         '<span class="hint">In a race, tap 🔧 (or press H) to repair your car back to 100% for a few points.</span>' +
