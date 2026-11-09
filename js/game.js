@@ -1317,6 +1317,7 @@ const SONGS = [];
     slN = 1,
     slQ = 0,
     repQ = 0,
+    shield = 0,
     slipChg = 0,
     padT = 0,
     pZapT = 0,
@@ -1343,7 +1344,16 @@ const SONGS = [];
   /* Mumbai: the car can't be damaged. Everywhere else, reaching 0% wrecks it and you lose the race */
   const inv = () => !!MAPS[mapSel].hz;
   function hurt(x) {
-    if (!inv()) dmg = Math.min(1, dmg + x * UP.tf);
+    if (inv()) return;
+    x *= UP.tf;
+    // armour from the Repair Shop takes the hits first, then the car itself
+    if (shield > 0) {
+      const a = Math.min(shield, x);
+      shield -= a;
+      x -= a;
+      if (shield <= 0) toast('Armour gone · back to 100%', 1);
+    }
+    if (x > 0) dmg = Math.min(1, dmg + x);
   }
   /* D switches drift on and stays on until D is pressed again */
   function setDriftLock(on) {
@@ -2271,6 +2281,12 @@ const SONGS = [];
     bzCd = 0;
     bzN = 0;
     warn = null;
+    shield = 0;
+    if (me && me.armor > 0) {
+      shield = me.armor;
+      me.armor = 0;
+      save();
+    }
     pwLbl();
     wreck = false;
     dLock = false;
@@ -2993,6 +3009,7 @@ const SONGS = [];
         dailyText() +
         '</small></button>' +
         '<button class="mb" data-a="garage"><b>Garage</b><small>Spend points to upgrade your car</small></button>' +
+        '<button class="mb" data-a="shop"><b>Repair Shop</b><small>Armour: start your next race at 105%</small></button>' +
         '<button class="mb" data-a="league"><b>League</b><small>Monthly league · leaderboard · race history</small></button>' +
         '<button class="mb" data-a="help"><b>How to Play</b><small>Controls, drifting, damage and tips</small></button>' +
         '</div>' +
@@ -3124,6 +3141,43 @@ const SONGS = [];
     }
     signIn(k);
     if (fresh) showHelp();
+  }
+  /* Repair Shop: armour plates add car health above 100% for your next race. Crashes knock the armour off
+     first, then your car takes damage as usual. Mid-race repairs are on the 🔧 button (H) */
+  const ARMOR = [
+    { a: 0.05, p: 30, n: 'Light armour' },
+    { a: 0.1, p: 55, n: 'Heavy armour' },
+  ];
+  function showShop() {
+    const on = me.armor > 0;
+    ovSet(
+      '<h1 class="sm">Repair Shop</h1><p>' +
+        me.points +
+        ' pts to spend</p>' +
+        (on
+          ? '<span class="hint">Fitted: your next race starts at <b>' +
+            Math.round(100 + me.armor * 100) +
+            '%</b> car health.</span>'
+          : '<span class="hint">Armour lasts one race: you start above 100% and crashes knock it off first, then your car takes damage as usual.</span>') +
+        '<div class="menu">' +
+        ARMOR.map(
+          (A, i) =>
+            '<button class="mb" data-a="buyarmor" data-v="' +
+            i +
+            '"' +
+            (on || me.points < A.p ? ' disabled' : '') +
+            '><b>' +
+            A.n +
+            ' · ' +
+            (100 + A.a * 100) +
+            '%</b><small>' +
+            A.p +
+            ' pts · for your next race</small></button>',
+        ).join('') +
+        '</div>' +
+        '<span class="hint">In a race, tap 🔧 (or press H) to repair your car back to 100% for a few points.</span>' +
+        '<button class="btn alt" data-a="menu">Back</button>',
+    );
   }
   function showGarage() {
     reloadStore();
@@ -3429,7 +3483,17 @@ const SONGS = [];
       else $('copied').textContent = link;
     } else if (a === 'again') begin(mode);
     else if (a === 'garage') showGarage();
-    else if (a === 'league') showLeague();
+    else if (a === 'shop') showShop();
+    else if (a === 'buyarmor') {
+      const A = ARMOR[+v];
+      if (A && me && me.points >= A.p && !(me.armor > 0)) {
+        me.points -= A.p;
+        me.armor = A.a;
+        save();
+        toast('Armour fitted · next race starts at ' + (100 + A.a * 100) + '%', 0, 'cp');
+      }
+      showShop();
+    } else if (a === 'league') showLeague();
     else if (a === 'menu') showMenu();
     else if (a === 'buy') buy(v);
     else if (a === 'switch') showLogin(true);
@@ -4211,7 +4275,7 @@ const SONGS = [];
     $('nf').style.width = clamp(nit, 0, 100) + '%';
     $('df').style.width = Math.round(100 - dmg * 100) + '%';
     $('df').style.setProperty('--hc', dmg > 0.65 ? '#ff5a5a' : dmg > 0.35 ? '#ffc15e' : '#6ff0e4');
-    $('dl').textContent = inv() ? 'INVINCIBLE' : Math.round(100 - dmg * 100) + '%';
+    $('dl').textContent = inv() ? 'INVINCIBLE' : Math.round(100 - dmg * 100 + shield * 100) + '%';
     $('nl').textContent = boost > 0.3 ? 'BOOST' : dLock ? 'DRIFT ON' : nit < 20 ? 'LOW' : 'READY';
     if (mode === 'mp') {
       const left = Math.max(0, Math.ceil(mpLeft() / 1000));

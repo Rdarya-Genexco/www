@@ -2113,3 +2113,13 @@ body.play #radio {
 #tc .pw .rp {
   border-color: rgba(255, 217, 102, 0.85);
 }
+.mb:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* on menus the radio button sits in the bottom corner, out of the way of the text */
+body:not(.play) #radiob {
+  top: auto;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  transform: none;
+}
