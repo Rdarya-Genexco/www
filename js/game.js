@@ -1982,7 +1982,7 @@ const SONGS = [];
   const newCode = () =>
     Array.from({ length: 5 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[(Math.random() * 31) | 0]).join('');
   // invite links always use the public site, so they work even when sent from the Windows app
-  const inviteLink = code => 'https://rdarya-genexco.github.io/www/?room=' + code;
+  const inviteLink = code => 'https://ww-ws.netlify.app/?room=' + code;
   function showMp(code) {
     if (!cUser || !window.cloud || !window.cloud.mp) {
       cMsg = 'Sign in to race online with other drivers.';
