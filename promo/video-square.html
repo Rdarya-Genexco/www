@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:B;src:url(../assets/fonts/big-shoulders-display.woff2);font-weight:100 900}
+html,body{margin:0}body{width:1080px;height:1080px;overflow:hidden;font-family:B,Impact,sans-serif;color:#fff4e0;background:#13113a}
+.sc{position:absolute;inset:0;opacity:0}
+.bg{position:absolute;inset:0;background-size:cover;background-position:center}
+.dim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(19,17,58,.85),rgba(19,17,58,.1) 35%,rgba(19,17,58,.1) 60%,rgba(19,17,58,.9))}
+.cap{position:absolute;left:60px;right:60px;text-align:center;font-weight:900;text-shadow:0 6px 30px #000,0 0 40px rgba(255,122,61,.6)}
+.big{font-size:120px;line-height:.85}.mid{font-size:58px;color:#ffc15e}
+#s0{background:radial-gradient(ellipse at 50% 45%,#3a2470,#13113a 70%)}
+#logo{position:absolute;left:50%;top:250px;width:220px;margin-left:-110px;filter:drop-shadow(0 10px 40px rgba(255,122,61,.8))}
+.chips{position:absolute;left:60px;right:60px;top:470px;display:flex;flex-wrap:wrap;justify-content:center;gap:20px}
+.chips span{background:rgba(27,26,58,.9);border:3px solid rgba(255,154,92,.85);border-radius:999px;padding:9px 24px 6px;font-size:40px;font-weight:800}
+.btn{position:absolute;left:50%;top:760px;transform:translateX(-50%);background:linear-gradient(180deg,#ff9a5c,#ff7a3d);color:#13113a;border-radius:26px;padding:18px 54px 14px;font-size:72px;font-weight:900;white-space:nowrap;box-shadow:0 12px 50px rgba(255,122,61,.7)}
+.url{position:absolute;left:0;right:0;top:930px;text-align:center;font-size:40px;font-weight:700}
+</style></head><body>
+<div class="sc" id="s0"><img id="logo" src="favicon.svg"><div class="cap big" id="t0" style="top:520px">Worldwide<br>Wheels</div></div>
+<div class="sc" id="s1"><div class="bg" id="b1" style="background-image:url(shot.png)"></div><div class="dim"></div><div class="cap big" style="top:70px">Race the<br>world</div><div class="cap mid" style="bottom:80px">India · Brazil · Mexico · Japan</div></div>
+<div class="sc" id="s2"><div class="bg" id="b2" style="background-image:url(car.png)"></div><div class="dim"></div><div class="cap big" style="top:70px">Unlock<br>supercars</div><div class="cap mid" style="bottom:80px">Upgrade · Repair · Armour</div></div>
+<div class="sc" id="s3"><div class="bg" id="b3" style="background-image:url(shot2.png)"></div><div class="dim"></div><div class="cap big" style="top:70px">Fly · Zap<br>Freeze</div><div class="cap mid" style="bottom:80px">Race friends online</div></div>
+<div class="sc" id="s4" style="background:radial-gradient(ellipse at 50% 40%,#3a2470,#13113a 70%)"><img src="favicon.svg" style="position:absolute;left:50%;top:50px;width:130px;margin-left:-65px"><div class="cap big" style="top:200px">Worldwide<br>Wheels</div>
+<div class="chips"><span>🌍 4 countries</span><span>🏎️ Supercars</span><span>👥 Multiplayer</span><span>🔧 Repair shop</span><span>📱 Phone &amp; PC</span></div>
+<div class="btn" id="btn">PLAY FREE ▶</div><div class="url">rdarya-genexco.github.io/www</div></div>
+<script>
+const E=x=>1-Math.pow(1-Math.min(1,Math.max(0,x)),3);
+const S=[[0,2.2],[2,4.7],[4.5,7.2],[7,9.7],[9.5,13]];
+window.setT=t=>{S.forEach(([a,b],i)=>{const el=document.getElementById('s'+i);const fi=E((t-a)/.4),fo=i<4?E((t-(b-.3))/.3):0;el.style.opacity=Math.max(0,fi-fo);
+ const bg=document.getElementById('b'+i);if(bg)bg.style.transform='scale('+(1.05+0.12*Math.min(1,(t-a)/(b-a)))+')'});
+ const k=E(t/0.9);document.getElementById('logo').style.transform='scale('+(0.3+0.7*k)+') rotate('+(-200*(1-k))+'deg)';document.getElementById('t0').style.transform='translateY('+(80*(1-E((t-.3)/.7)))+'px)';
+ document.querySelectorAll('.chips span').forEach((c,i)=>{const q=E((t-9.9-i*.15)/.35);c.style.opacity=q;c.style.transform='translateY('+(40*(1-q))+'px)'});
+ const p=t>10.8?1+0.05*Math.sin((t-10.8)*6):E((t-10.5)/.3);document.getElementById('btn').style.transform='translateX(-50%) scale('+p+')';};
+</script></body></html>
