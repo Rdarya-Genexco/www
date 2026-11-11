@@ -1671,7 +1671,7 @@ const SONGS = [];
     e.textContent = '📻 ' + n;
     e.classList.add('on');
     clearTimeout(radioT);
-    radioT = setTimeout(() => e.classList.remove('on'), 3500);
+    radioT = setTimeout(() => e.classList.remove('on'), 5000);
   }
   function musicTick() {
     if (!ac) return;
@@ -1889,7 +1889,8 @@ const SONGS = [];
     const e = $('toast');
     e.textContent = t;
     e.className = 'on' + (bad ? ' bad' : '') + (cls ? ' ' + cls : '');
-    toastT = cls === 'cp' ? 1.2 : 0.9;
+    // long enough to read: 2 s, plus more for longer messages (up to 4 s)
+    toastT = Math.min(4, 2 + t.length * 0.03);
   }
   function confetti(n) {
     if (reduce) return;
