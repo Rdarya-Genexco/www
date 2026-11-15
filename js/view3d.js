@@ -1927,7 +1927,7 @@ function start() {
     });
   /* boost flames out of the back and wings that unfold while flying, for your car and the rivals */
   const FLAME_OUT = new THREE.MeshBasicMaterial({
-      color: 0xff6a1a,
+      color: 0x2f7dff,
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending,
@@ -1944,8 +1944,8 @@ function start() {
       roughness: 0.35,
       side: THREE.DoubleSide,
     });
-  FLAME_MID.color.set(0xffc15e);
-  FLAME_CORE.color.set(0xbfe4ff);
+  FLAME_MID.color.set(0x6fd0ff);
+  FLAME_CORE.color.set(0xf2fbff);
   const flameGeo = (rad, len) => new THREE.ConeGeometry(rad, len, 12, 1, true).translate(0, len / 2, 0).rotateX(Math.PI / 2);
   function wingGeo() {
     // swept wing: wide at the car, pointed at the tip
@@ -1957,23 +1957,27 @@ function start() {
     sh.closePath();
     return new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false }).rotateX(Math.PI / 2);
   }
-  function addFx(m, s) {
+  function addFx(m, s, col) {
+    const wm = WING.clone();
+    wm.color.set(col || '#eef6ff');
+    wm.emissive.set(col || '#6fd0ff');
+    wm.emissiveIntensity = 0.15;
     const fx = new THREE.Group(),
       flames = [],
       wings = [],
-      ex = [-0.32, 0, 0.32];
+      ex = [-0.45, 0.45]; // one jet from each exhaust
     for (const x of ex) {
       const f = new THREE.Group();
-      f.add(new THREE.Mesh(flameGeo(0.17, 1), FLAME_OUT), new THREE.Mesh(flameGeo(0.12, 0.8), FLAME_MID), new THREE.Mesh(flameGeo(0.06, 0.55), FLAME_CORE));
-      f.position.set(x, (s.r || 0.2) + 0.18, (s.L || 4.4) / 2 - 0.05);
+      f.add(new THREE.Mesh(flameGeo(0.2, 1.2), FLAME_OUT), new THREE.Mesh(flameGeo(0.12, 0.95), FLAME_MID), new THREE.Mesh(flameGeo(0.06, 0.7), FLAME_CORE));
+      f.position.set(x, (s.r || 0.2) + 0.12, (s.L || 4.4) / 2 - 0.05);
       f.visible = false;
       fx.add(f);
       flames.push(f);
     }
     for (const sx of [-1, 1]) {
-      const w = new THREE.Mesh(wingGeo(), WING);
+      const w = new THREE.Mesh(wingGeo(), wm);
       w.castShadow = true;
-      w.position.set(sx * ((s.W || 1.9) / 2 - 0.05), (s.r || 0.2) + (s.roof || 1) * 0.55, 0.1);
+      w.position.set(sx * ((s.W || 1.9) / 2 - 0.3), (s.r || 0.2) + (s.deck || 0.7) * 0.75, 0.2); // starts inside the body so it's joined on
       w.scale.set(sx, 1, 1);
       w.visible = false;
       fx.add(w);
@@ -2252,7 +2256,7 @@ function start() {
       }
       player = makeCar(pl.body, pl.col, true, true);
       if (G.TH.stars) headlights(player);
-      addFx(player, SPEC[pl.body] || SPEC.coupe);
+      addFx(player, SPEC[pl.body] || SPEC.coupe, pl.col);
       lastDmg = 0;
       scene.add(player);
       playerKey = key;
@@ -2316,7 +2320,7 @@ function start() {
       if (c.rv) {
         m.position.y += ((c.alt || 0) / G.ALT) * FLY_H;
         ice(m, c.frzT > 0);
-        if (!m.userData.fx) addFx(m, SPEC[c.body] || SPEC.coupe);
+        if (!m.userData.fx) addFx(m, SPEC[c.body] || SPEC.coupe, c.col);
         updateFx(m, c.bb > 0 ? 1 : 0, (c.alt || 0) / G.ALT);
       }
     }
