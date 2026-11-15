@@ -367,13 +367,13 @@ const SONGS = [];
     { id: 'b3', name: 'Blaze', col: '#ff7a3d', off: 0.05 },
     { id: 'b4', name: 'Ghost', col: '#c99fff', off: 0.01 },
   ];
+  /* ranks are free: they come from your points (whichever is higher, points you have or points you've earned) */
   const TIERS = [
-    { id: 'rookie', label: 'Rookie', icon: '🏁', min: 0, c: '#a0a0b0' },
-    { id: 'bronze', label: 'Bronze', icon: '🥉', min: 100, c: '#e88a45' },
-    { id: 'silver', label: 'Silver', icon: '🥈', min: 300, c: '#c8d0e0' },
-    { id: 'gold', label: 'Gold', icon: '🥇', min: 700, c: '#ffd966' },
-    { id: 'champion', label: 'Champion', icon: '👑', min: 1500, c: '#c99fff' },
+    { id: 'bronze', label: 'Bronze', icon: '🥉', min: 0, c: '#e88a45' },
+    { id: 'silver', label: 'Silver', icon: '🥈', min: 1500, c: '#c8d0e0' },
+    { id: 'gold', label: 'Gold', icon: '🥇', min: 3000, c: '#ffd966' },
   ];
+
   const tierOf = p => {
     let t = TIERS[0];
     for (const x of TIERS) if (p >= x.min) t = x;
@@ -2932,7 +2932,7 @@ const SONGS = [];
     spawn(false);
     document.body.classList.remove('play');
     if (!me) return showLogin();
-    const t = tierOf(me.careerPts);
+    const t = tierOf(Math.max(me.points || 0, me.careerPts || 0));
     ovSet(
       '<h1>Worldwide<br>Wheels</h1><div class="who"><span class="tier" style="--c:' +
         t.c +
@@ -3362,14 +3362,14 @@ const SONGS = [];
     reloadStore();
     roll(me);
     ensureBots();
-    const t = tierOf(me.careerPts),
-      n = nextTier(me.careerPts),
+    const t = tierOf(Math.max(me.points || 0, me.careerPts || 0)),
+      n = nextTier(Math.max(me.points || 0, me.careerPts || 0)),
       pr = n ? Math.round(((me.careerPts - t.min) / (n.min - t.min)) * 100) : 100;
     const rows = [];
     for (const k in profiles) {
       const p = profiles[k];
       roll(p);
-      rows.push({ name: p.name, col: p.color, pts: p.seasonPts, tier: tierOf(p.careerPts), me: p === me });
+      rows.push({ name: p.name, col: p.color, pts: p.seasonPts, tier: tierOf(Math.max(p.points || 0, p.careerPts || 0)), me: p === me });
     }
     for (const k in league.bots) {
       const b = league.bots[k];
