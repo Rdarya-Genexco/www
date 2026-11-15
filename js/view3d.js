@@ -1925,6 +1925,86 @@ function start() {
       roughness: 0.1,
       depthWrite: false,
     });
+  /* boost flames out of the back and wings that unfold while flying, for your car and the rivals */
+  const FLAME_OUT = new THREE.MeshBasicMaterial({
+      color: 0xff6a1a,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    }),
+    FLAME_MID = FLAME_OUT.clone(),
+    FLAME_CORE = FLAME_OUT.clone(),
+    WING = new THREE.MeshStandardMaterial({
+      color: 0xeef6ff,
+      emissive: 0x6fd0ff,
+      emissiveIntensity: 0.45,
+      metalness: 0.3,
+      roughness: 0.35,
+      side: THREE.DoubleSide,
+    });
+  FLAME_MID.color.set(0xffc15e);
+  FLAME_CORE.color.set(0xbfe4ff);
+  const flameGeo = (rad, len) => new THREE.ConeGeometry(rad, len, 12, 1, true).translate(0, len / 2, 0).rotateX(Math.PI / 2);
+  function wingGeo() {
+    // swept wing: wide at the car, pointed at the tip
+    const sh = new THREE.Shape();
+    sh.moveTo(0, -0.55);
+    sh.lineTo(2.1, 0.15);
+    sh.lineTo(2.2, 0.45);
+    sh.lineTo(0, 0.6);
+    sh.closePath();
+    return new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false }).rotateX(Math.PI / 2);
+  }
+  function addFx(m, s) {
+    const fx = new THREE.Group(),
+      flames = [],
+      wings = [],
+      ex = [-0.32, 0, 0.32];
+    for (const x of ex) {
+      const f = new THREE.Group();
+      f.add(new THREE.Mesh(flameGeo(0.17, 1), FLAME_OUT), new THREE.Mesh(flameGeo(0.12, 0.8), FLAME_MID), new THREE.Mesh(flameGeo(0.06, 0.55), FLAME_CORE));
+      f.position.set(x, (s.r || 0.2) + 0.18, (s.L || 4.4) / 2 - 0.05);
+      f.visible = false;
+      fx.add(f);
+      flames.push(f);
+    }
+    for (const sx of [-1, 1]) {
+      const w = new THREE.Mesh(wingGeo(), WING);
+      w.castShadow = true;
+      w.position.set(sx * ((s.W || 1.9) / 2 - 0.05), (s.r || 0.2) + (s.roof || 1) * 0.55, 0.1);
+      w.scale.set(sx, 1, 1);
+      w.visible = false;
+      fx.add(w);
+      wings.push(w);
+    }
+    fx.userData = { flames, wings };
+    m.add(fx);
+    m.userData.fx = fx;
+  }
+  function updateFx(m, boost, fly) {
+    const fx = m.userData.fx;
+    if (!fx) return;
+    const t = performance.now() / 1000,
+      on = boost > 0.03 && !G.reduce;
+    fx.userData.flames.forEach((f, i) => {
+      f.visible = on;
+      if (on) {
+        const len = (0.7 + 1.8 * boost) * (0.8 + 0.4 * Math.random());
+        f.scale.set(1 + 0.15 * Math.sin(t * 40 + i), 1 + 0.15 * Math.cos(t * 37 + i), len);
+      }
+    });
+    const k = Math.min(1, fly * 1.4);
+    fx.userData.wings.forEach((w, i) => {
+      w.visible = k > 0.02;
+      if (w.visible) {
+        const sx = i ? 1 : -1;
+        w.scale.set(sx * k, 1, 0.6 + 0.4 * k); // unfold sideways as you climb
+        w.rotation.z = sx * Math.sin(t * 5) * 0.12 * k; // gentle flap
+      }
+    });
+  }
   function ice(m, on) {
     if (!on && !m.userData.ice) return;
     if (!m.userData.ice) {
@@ -2172,6 +2252,7 @@ function start() {
       }
       player = makeCar(pl.body, pl.col, true, true);
       if (G.TH.stars) headlights(player);
+      addFx(player, SPEC[pl.body] || SPEC.coupe);
       lastDmg = 0;
       scene.add(player);
       playerKey = key;
@@ -2181,6 +2262,7 @@ function start() {
     const lift = (G.flyK || 0) * FLY_H;
     player.position.y += lift + (lift > 0.3 ? Math.sin(G.t * 1.7) * 0.35 * G.flyK : 0);
     ice(player, G.pFrz);
+    updateFx(player, G.state === 'race' ? G.boost : 0, G.flyK || 0);
     spin(player, sf * dt * 60);
     windT.value += dt;
     grade.uniforms.time.value = (grade.uniforms.time.value + dt) % 100;
@@ -2234,6 +2316,8 @@ function start() {
       if (c.rv) {
         m.position.y += ((c.alt || 0) / G.ALT) * FLY_H;
         ice(m, c.frzT > 0);
+        if (!m.userData.fx) addFx(m, SPEC[c.body] || SPEC.coupe);
+        updateFx(m, c.bb > 0 ? 1 : 0, (c.alt || 0) / G.ALT);
       }
     }
     zapBolt();
