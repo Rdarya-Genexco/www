@@ -3164,24 +3164,29 @@ const SONGS = [];
     ovSet(
       '<h1 class="sm">Feature Shop</h1><p>' +
         me.points +
-        ' pts to spend</p><span class="hint">Upgrade your power-ups for good. Each one has 4 upgrades.</span><div class="menu">' +
+        ' pts to spend</p><div class="sec">Upgrades</div><div class="grid">' +
         FEAT.map(F => {
           const l = fLvl(F.k),
             max = l >= FMAX,
             c = FCOST[l];
           return (
-            '<button class="mb" data-a="fbuy" data-v="' +
-            F.k +
-            '"' +
-            (max || me.points < c ? ' disabled' : '') +
-            '><b>' +
+            '<div class="card"><b>' +
             F.n +
-            ' · ' +
-            (max ? 'MAX' : c + ' pts') +
-            '</b><small>Now: ' +
-            F.d(l) +
-            (max ? '' : ' → ' + F.d(l + 1)) +
-            '</small></button>'
+            '</b><small>' +
+            (max ? F.d(l) : F.d(l) + ' → ' + F.d(l + 1)) +
+            '</small><div class="pips">' +
+            Array.from({ length: FMAX }, (_, i) => '<i class="' + (i < l ? 'f' : '') + '"></i>').join('') +
+            '</div>' +
+            (max
+              ? '<button class="btn" disabled>MAX</button>'
+              : '<button class="btn" data-a="fbuy" data-v="' +
+                F.k +
+                '"' +
+                (me.points < c ? ' disabled' : '') +
+                '>' +
+                c +
+                ' pts</button>') +
+            '</div>'
           );
         }).join('') +
         '</div><button class="btn alt" data-a="menu">Back</button>',
