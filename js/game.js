@@ -2263,7 +2263,7 @@ const SONGS = [];
     flyQ = 0;
     galt = 0;
     air = 0;
-    zaps = 1 + fLvl('zap');
+    zaps = Math.min(3, 1 + fLvl('zap'));
     zapQ = 0;
     zapFx = 0;
     zapTgt = null;
@@ -3010,7 +3010,7 @@ const SONGS = [];
         dailyText() +
         '</small></button>' +
         '<button class="mb" data-a="garage"><b>Garage</b><small>Spend points to upgrade your car</small></button>' +
-        '<button class="mb" data-a="fshop"><b>Feature Garage</b><small>Upgrade Fly, Zap, Boost and Freeze</small></button>' +
+        '<button class="mb" data-a="fshop"><b>Feature Shop</b><small>Upgrade Fly, Zap, Boost and Freeze</small></button>' +
         '<button class="mb" data-a="shop"><b>Repair Shop</b><small>Armour: start your next race at 105%</small></button>' +
         '<button class="mb" data-a="league"><b>League</b><small>Monthly league · leaderboard · race history</small></button>' +
         '<button class="mb" data-a="help"><b>How to Play</b><small>Controls, drifting, damage and tips</small></button>' +
@@ -3153,18 +3153,18 @@ const SONGS = [];
   /* Feature Garage: permanent power-up upgrades bought with points (3 levels each) */
   const FEAT = [
     { k: 'fly', n: '✈️ Fly', d: l => 'fly ' + (100 + 8 * l) + '% speed' },
-    { k: 'zap', n: '⚡ Zap', d: l => 1 + l + (l ? ' zaps' : ' zap') + ' a race' },
+    { k: 'zap', n: '⚡ Zap', d: l => Math.min(3, 1 + l) + (l ? ' zaps' : ' zap') + ' a race' + (l > 2 ? ' · stun ' + (2.5 + 0.5 * (l - 2)) + ' s' : '') },
     { k: 'boost', n: '🔥 Boost', d: l => 'nitro ' + (100 + 20 * l) + '% power' },
     { k: 'frz', n: '❄️ Freeze', d: l => 'freeze rivals for ' + (3 + l) + ' s' },
   ];
-  const FCOST = [100, 250, 500],
-    FMAX = 2; // levels 0..2 on top of the base: Zap tops out at 3 zaps
+  const FCOST = [100, 250, 500, 1000],
+    FMAX = 4; // 4 upgrades each; Zap tops out at 3 zaps, its last 2 upgrades make zaps stun longer
   const fLvl = k => Math.min(FMAX, (me && me.upg && me.upg['f_' + k]) || 0);
   function showFShop() {
     ovSet(
-      '<h1 class="sm">Feature Garage</h1><p>' +
+      '<h1 class="sm">Feature Shop</h1><p>' +
         me.points +
-        ' pts to spend</p><span class="hint">Upgrade your power-ups for good. Each one has 2 upgrades.</span><div class="menu">' +
+        ' pts to spend</p><span class="hint">Upgrade your power-ups for good. Each one has 4 upgrades.</span><div class="menu">' +
         FEAT.map(F => {
           const l = fLvl(F.k),
             max = l >= FMAX,
@@ -3708,7 +3708,7 @@ const SONGS = [];
     if (!best) return toast('Nobody to zap', 1);
     zaps--;
     pwLbl();
-    best.zapT = 2.5;
+    best.zapT = 2.5 + 0.5 * Math.max(0, fLvl('zap') - 2);
     best.sp *= 0.35;
     best.flT = 0;
     best.bb = 0;
