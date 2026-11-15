@@ -1059,6 +1059,22 @@ const SONGS = [];
         segs[c.s].cars.push(c);
         cars.push(c);
       }
+      // people crossing the street
+      const PEDC = ['#e8433f', '#2f7de1', '#f2b705', '#3bb273', '#c99fff', '#ff8fb1'];
+      for (let i = 0; i < 16; i++) {
+        const c = {
+          hz: 'ped',
+          z: 3000 + ((i + Math.random() * 0.5) / 16) * (TL - 4600),
+          o: 0,
+          sp: 0,
+          col: PEDC[i % PEDC.length],
+          ph: Math.random() * 6.3,
+          pd: 0,
+        };
+        c.s = Math.floor(c.z / SL) % N;
+        segs[c.s].cars.push(c);
+        cars.push(c);
+      }
     }
     if (rivals)
       RIV.slice(0, rivSel).forEach((b, i) => {
@@ -1317,6 +1333,7 @@ const SONGS = [];
     slN = 1,
     slQ = 0,
     repQ = 0,
+    pedSlow = 0,
     shield = 0,
     slipChg = 0,
     padT = 0,
@@ -2282,6 +2299,7 @@ const SONGS = [];
     bzCd = 0;
     bzN = 0;
     warn = null;
+    pedSlow = 0;
     shield = 0;
     if (me && me.armor > 0) {
       shield = me.armor;
@@ -4072,6 +4090,10 @@ const SONGS = [];
         MAXS * UP.ts * (1 + (0.08 + 0.04 * fLvl('boost')) * boost) * (air >= 300 ? 1 + 0.08 * fLvl('fly') : 1) * (1 - 0.18 * dmg) * (padT > 0 ? 1.15 : 1) * (pZapT > 0 ? 0.45 : 1),
       );
       if (padT > 0) padT -= dt;
+      if (pedSlow > 0) {
+        pedSlow -= dt;
+        lim = Math.min(lim, MAXS * UP.ts * 0.5);
+      }
       if (grass && air < 300) lim = Math.min(lim, MAXS * UP.ts * (0.45 + 0.06 * UP.gr));
       // above the limit (nitro ending, damage): ease back, faster than gas and nitro can push
       if (speed > lim) speed = Math.max(lim, speed - MAXS * 1.2 * dt);
@@ -4176,6 +4198,11 @@ const SONGS = [];
         // placed by the ghost playback above
       } else {
         c.z = (c.z + dt * c.sp) % TL;
+        if (c.hz === 'ped') {
+          c.ph += dt * 0.3;
+          c.o = Math.sin(c.ph) * 1.15;
+          if (c.hitT > 0) c.hitT -= dt;
+        }
         if (c.hz === 'cow') {
           c.ph += dt * 0.35;
           c.o = clamp(c.base + Math.sin(c.ph) * 0.35, -0.9, 0.9);
@@ -4221,7 +4248,23 @@ const SONGS = [];
         inSlip = true;
       if (state === 'race' && !c.ghost && !c.net && air < 300 && !(c.alt > 300)) {
         const dxo = Math.abs(c.o - px);
-        if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
+        if (c.hz === 'ped') {
+          if (!(c.hitT > 0) && Math.abs(dz) < SL * 1.1 && dxo < 0.28 && speed > MAXS * 0.05) {
+            c.hitT = 4;
+            c.ph += Math.PI / 2; // they stumble out of the way
+            const lose = Math.min(me ? me.points : 0, 10);
+            if (me) {
+              me.points -= lose;
+              save();
+            }
+            pedSlow = 5;
+            speed *= 0.6;
+            shake = reduce ? 0 : 10;
+            vib(140);
+            blip(140, 0.25, 'sawtooth');
+            toast('Hit a pedestrian! −' + lose + ' pts · slowed for 5 s', 1);
+          }
+        } else if (dz > 0 && dz < SL * 1.5 && dxo < 0.34 && speed > c.sp) {
           if (c.rv) c.dmg = Math.min(1, (c.dmg || 0) + 0.1);
           speed = Math.max(c.sp, MAXS * 0.16) * 0.5;
           shake = reduce ? 0 : 14;

@@ -1040,6 +1040,35 @@ function start() {
   }
   function makeHazard(k, col) {
     const g = new THREE.Group();
+    if (k === 'ped') {
+      // a person crossing the street: shirt in their own colour, dark trousers, swinging legs and arms
+      const shirt = flat(col),
+        trousers = flat(0x2a2e45),
+        legs = [];
+      for (const sx of [-1, 1]) {
+        const leg = new THREE.Group();
+        leg.add(box(0.16, 0.8, 0.18, trousers, 0, -0.4, 0));
+        leg.position.set(sx * 0.12, 0.85, 0);
+        g.add(leg);
+        legs.push(leg);
+        const arm = new THREE.Group();
+        arm.add(box(0.12, 0.6, 0.14, shirt, 0, -0.3, 0));
+        arm.position.set(sx * 0.31, 1.45, 0);
+        g.add(arm);
+        legs.push(arm);
+      }
+      g.add(box(0.5, 0.65, 0.28, shirt, 0, 1.17, 0));
+      const head = new THREE.Group();
+      head.add(new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 10), M.skin));
+      head.position.set(0, 1.68, 0);
+      g.add(head);
+      // legs and arms swing in opposite pairs
+      g.userData.legs = [legs[0], legs[3], legs[2], legs[1]];
+      g.userData.head = head;
+      g.traverse(o => o.isMesh && (o.castShadow = true));
+      g.scale.setScalar(CAR);
+      return g;
+    }
     if (k === 'rick') {
       g.add(rbox(1.4, 0.8, 2.6, flat(0x1f6b3a), 0, 0.75, 0));
       g.add(taper(1.4, 1.2, 0.7, 2.6, 2.2, flat(0xf2c418), 0, 1.5, 0));
@@ -2378,8 +2407,13 @@ function start() {
       if (dz < -G.TL / 2) dz += G.TL;
       m.visible = !c.hidden && dz > -40 / FS && dz < 700 / FS;
       if (!m.visible) continue;
-      place(m, c.z, c.o, c.hz === 'cow' ? Math.cos(c.ph) * 1.3 : 0);
-      if (c.hz === 'cow') walk(m, G.t * 3 + c.ph * 5);
+      place(
+        m,
+        c.z,
+        c.o,
+        c.hz === 'cow' ? Math.cos(c.ph) * 1.3 : c.hz === 'ped' ? (Math.cos(c.ph) > 0 ? -Math.PI / 2 : Math.PI / 2) : 0,
+      );
+      if (c.hz === 'cow' || c.hz === 'ped') walk(m, G.t * (c.hz === 'ped' ? 7 : 3) + c.ph * 5);
       else if (c.hz === 'cart' && m.userData.cows)
         m.userData.cows.forEach((b, i) => walk(b, G.t * 4 + i * 0.5));
       if (!c.hz || c.hz === 'cyc' || c.hz === 'rick') spin(m, (c.sp / 12000) * dt * 60);
