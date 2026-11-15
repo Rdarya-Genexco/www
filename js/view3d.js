@@ -2001,7 +2001,7 @@ function start() {
       if (w.visible) {
         const sx = i ? 1 : -1;
         w.scale.set(sx * k, 1, 0.6 + 0.4 * k); // unfold sideways as you climb
-        w.rotation.z = sx * Math.sin(t * 5) * 0.12 * k; // gentle flap
+        w.rotation.z = sx * (0.3 + Math.sin(t * 5) * 0.12) * k; // tilted up so you see them from behind, gentle flap
       }
     });
   }
