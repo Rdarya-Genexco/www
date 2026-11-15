@@ -2263,7 +2263,7 @@ const SONGS = [];
     flyQ = 0;
     galt = 0;
     air = 0;
-    zaps = 1;
+    zaps = 1 + fLvl('zap');
     zapQ = 0;
     zapFx = 0;
     zapTgt = null;
@@ -3010,6 +3010,7 @@ const SONGS = [];
         dailyText() +
         '</small></button>' +
         '<button class="mb" data-a="garage"><b>Garage</b><small>Spend points to upgrade your car</small></button>' +
+        '<button class="mb" data-a="fshop"><b>Feature Garage</b><small>Upgrade Fly, Zap, Boost and Freeze</small></button>' +
         '<button class="mb" data-a="shop"><b>Repair Shop</b><small>Armour: start your next race at 105%</small></button>' +
         '<button class="mb" data-a="league"><b>League</b><small>Monthly league · leaderboard · race history</small></button>' +
         '<button class="mb" data-a="help"><b>How to Play</b><small>Controls, drifting, damage and tips</small></button>' +
@@ -3149,6 +3150,43 @@ const SONGS = [];
     { a: 0.05, p: 30, n: 'Light armour' },
     { a: 0.1, p: 55, n: 'Heavy armour' },
   ];
+  /* Feature Garage: permanent power-up upgrades bought with points (3 levels each) */
+  const FEAT = [
+    { k: 'fly', n: '✈️ Fly', d: l => 'fly ' + (100 + 8 * l) + '% speed' },
+    { k: 'zap', n: '⚡ Zap', d: l => 1 + l + (l ? ' zaps' : ' zap') + ' a race' },
+    { k: 'boost', n: '🔥 Boost', d: l => 'nitro ' + (100 + 20 * l) + '% power' },
+    { k: 'frz', n: '❄️ Freeze', d: l => 'freeze rivals for ' + (3 + l) + ' s' },
+  ];
+  const FCOST = [100, 250, 500],
+    FMAX = 2; // levels 0..2 on top of the base: Zap tops out at 3 zaps
+  const fLvl = k => Math.min(FMAX, (me && me.upg && me.upg['f_' + k]) || 0);
+  function showFShop() {
+    ovSet(
+      '<h1 class="sm">Feature Garage</h1><p>' +
+        me.points +
+        ' pts to spend</p><span class="hint">Upgrade your power-ups for good. Each one has 2 upgrades.</span><div class="menu">' +
+        FEAT.map(F => {
+          const l = fLvl(F.k),
+            max = l >= FMAX,
+            c = FCOST[l];
+          return (
+            '<button class="mb" data-a="fbuy" data-v="' +
+            F.k +
+            '"' +
+            (max || me.points < c ? ' disabled' : '') +
+            '><b>' +
+            F.n +
+            ' · ' +
+            (max ? 'MAX' : c + ' pts') +
+            '</b><small>Now: ' +
+            F.d(l) +
+            (max ? '' : ' → ' + F.d(l + 1)) +
+            '</small></button>'
+          );
+        }).join('') +
+        '</div><button class="btn alt" data-a="menu">Back</button>',
+    );
+  }
   function showShop() {
     const on = me.armor > 0;
     ovSet(
@@ -3487,6 +3525,19 @@ const SONGS = [];
     } else if (a === 'again') begin(mode);
     else if (a === 'garage') showGarage();
     else if (a === 'shop') showShop();
+    else if (a === 'fshop') showFShop();
+    else if (a === 'fbuy') {
+      const l = fLvl(v),
+        c = FCOST[l];
+      if (me && l < FMAX && me.points >= c) {
+        me.points -= c;
+        me.upg = me.upg || {};
+        me.upg['f_' + v] = l + 1;
+        save();
+        toast('Upgraded!', 0, 'cp');
+      }
+      showFShop();
+    }
     else if (a === 'buyarmor') {
       const A = ARMOR[+v];
       if (A && me && me.points >= A.p && !(me.armor > 0)) {
@@ -3680,11 +3731,11 @@ const SONGS = [];
     if (!cars.some(c => c.rv && !c.fin)) return toast('Nobody to freeze', 1);
     frz--;
     pwLbl();
-    frzT = 3;
+    frzT = 3 + fLvl('frz');
     bfCd = Math.max(bfCd, 10);
     for (const c of cars)
       if (c.rv && !(c.zapT > 0)) {
-        c.frzT = 3;
+        c.frzT = 3 + fLvl('frz');
         c.sp = 0;
         c.bb = 0;
       }
@@ -3961,7 +4012,7 @@ const SONGS = [];
         }
       }
       if (bo) {
-        speed += ACC * UP.ac * 1.8 * dt;
+        speed += ACC * UP.ac * 1.8 * (1 + 0.2 * fLvl('boost')) * dt;
         nit -= dt * 30;
       } else nit = Math.min(100, nit + dt * 2.5);
       // grass: bumpy, dusty and slow (speed is capped below)
@@ -4013,7 +4064,7 @@ const SONGS = [];
       }
       let lim = Math.min(
         CAP,
-        MAXS * UP.ts * (1 + 0.08 * boost) * (1 - 0.18 * dmg) * (padT > 0 ? 1.15 : 1) * (pZapT > 0 ? 0.45 : 1),
+        MAXS * UP.ts * (1 + (0.08 + 0.04 * fLvl('boost')) * boost) * (air >= 300 ? 1 + 0.08 * fLvl('fly') : 1) * (1 - 0.18 * dmg) * (padT > 0 ? 1.15 : 1) * (pZapT > 0 ? 0.45 : 1),
       );
       if (padT > 0) padT -= dt;
       if (grass && air < 300) lim = Math.min(lim, MAXS * UP.ts * (0.45 + 0.06 * UP.gr));
