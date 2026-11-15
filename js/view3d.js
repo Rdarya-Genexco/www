@@ -1926,16 +1926,70 @@ function start() {
       depthWrite: false,
     });
   /* boost flames out of the back and wings that unfold while flying, for your car and the rivals */
-  const FLAME_OUT = new THREE.MeshBasicMaterial({
-      color: 0x2f7dff,
+  // flame look: a soft texture that's bright at the exhaust and fades to nothing at the tip
+  function flameTex() {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 256;
+    const g = c.getContext('2d'),
+      v = g.createLinearGradient(0, 256, 0, 0);
+    v.addColorStop(0, 'rgba(255,255,255,1)');
+    v.addColorStop(0.25, 'rgba(255,255,255,.85)');
+    v.addColorStop(0.6, 'rgba(255,255,255,.35)');
+    v.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = v;
+    g.fillRect(0, 0, 64, 256);
+    // soft edges across the width
+    const h = g.createLinearGradient(0, 0, 64, 0);
+    h.addColorStop(0, 'rgba(0,0,0,1)');
+    h.addColorStop(0.3, 'rgba(0,0,0,0)');
+    h.addColorStop(0.7, 'rgba(0,0,0,0)');
+    h.addColorStop(1, 'rgba(0,0,0,1)');
+    g.globalCompositeOperation = 'destination-out';
+    g.fillStyle = h;
+    g.fillRect(0, 0, 64, 256);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+  function glowTex() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d'),
+      r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(255,255,255,1)');
+    r.addColorStop(0.3, 'rgba(160,220,255,.6)');
+    r.addColorStop(1, 'rgba(40,120,255,0)');
+    g.fillStyle = r;
+    g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+  const FT = flameTex(),
+    fmat = (color, op) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        map: FT,
+        transparent: true,
+        opacity: op,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+      }),
+    FLAMES = [
+      [0.26, 0x1f5cff, 0.55], // wide outer blue
+      [0.17, 0x3f9bff, 0.75],
+      [0.1, 0x9fdcff, 0.9],
+      [0.05, 0xffffff, 1], // white-hot core
+    ].map(([r, c, o]) => ({ r, m: fmat(c, o) })),
+    GLOW = new THREE.SpriteMaterial({
+      map: glowTex(),
+      color: 0x8fd0ff,
       transparent: true,
-      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       toneMapped: false,
     }),
-    FLAME_MID = FLAME_OUT.clone(),
-    FLAME_CORE = FLAME_OUT.clone(),
     WING = new THREE.MeshStandardMaterial({
       color: 0xeef6ff,
       emissive: 0x6fd0ff,
@@ -1944,9 +1998,11 @@ function start() {
       roughness: 0.35,
       side: THREE.DoubleSide,
     });
-  FLAME_MID.color.set(0x6fd0ff);
-  FLAME_CORE.color.set(0xf2fbff);
-  const flameGeo = (rad, len) => new THREE.ConeGeometry(rad, len, 12, 1, true).translate(0, len / 2, 0).rotateX(Math.PI / 2);
+  // unit-length cone with its base at the exhaust and its tip pointing backwards
+  const flameGeo = rad => {
+    const g = new THREE.ConeGeometry(rad, 1, 16, 6, true).translate(0, 0.5, 0).rotateX(Math.PI / 2);
+    return g;
+  };
   function wingGeo() {
     // swept wing: wide at the car, pointed at the tip
     const sh = new THREE.Shape();
@@ -1968,7 +2024,10 @@ function start() {
       ex = [-0.45, 0.45]; // one jet from each exhaust
     for (const x of ex) {
       const f = new THREE.Group();
-      f.add(new THREE.Mesh(flameGeo(0.2, 1.2), FLAME_OUT), new THREE.Mesh(flameGeo(0.12, 0.95), FLAME_MID), new THREE.Mesh(flameGeo(0.06, 0.7), FLAME_CORE));
+      for (const L of FLAMES) f.add(new THREE.Mesh(flameGeo(L.r), L.m));
+      const glow = new THREE.Sprite(GLOW);
+      glow.scale.setScalar(0.9);
+      f.add(glow);
       f.position.set(x, (s.r || 0.2) + 0.12, (s.L || 4.4) / 2 - 0.05);
       f.visible = false;
       fx.add(f);
@@ -1994,10 +2053,18 @@ function start() {
       on = boost > 0.03 && !G.reduce;
     fx.userData.flames.forEach((f, i) => {
       f.visible = on;
-      if (on) {
-        const len = (0.7 + 1.8 * boost) * (0.8 + 0.4 * Math.random());
-        f.scale.set(1 + 0.15 * Math.sin(t * 40 + i), 1 + 0.15 * Math.cos(t * 37 + i), len);
-      }
+      if (!on) return;
+      // long jet: about 2.5 m at full boost, every layer flickering on its own
+      const base = 1.4 + 3.2 * boost;
+      f.children.forEach((c, j) => {
+        if (c.isSprite) {
+          c.scale.setScalar(0.7 + 0.35 * boost + 0.1 * Math.sin(t * 30 + i));
+          return;
+        }
+        const len = base * (1 - j * 0.16) * (0.85 + 0.3 * Math.random()),
+          w = 1 + 0.12 * Math.sin(t * (45 + j * 7) + i * 2);
+        c.scale.set(w, 2 - w, len);
+      });
     });
     const k = Math.min(1, fly * 1.4);
     fx.userData.wings.forEach((w, i) => {
