@@ -3364,7 +3364,7 @@ const SONGS = [];
     ensureBots();
     const t = tierOf(Math.max(me.points || 0, me.careerPts || 0)),
       n = nextTier(Math.max(me.points || 0, me.careerPts || 0)),
-      pr = n ? Math.round(((me.careerPts - t.min) / (n.min - t.min)) * 100) : 100;
+      pr = n ? Math.round(((Math.max(me.points || 0, me.careerPts || 0) - t.min) / (n.min - t.min)) * 100) : 100;
     const rows = [];
     for (const k in profiles) {
       const p = profiles[k];
