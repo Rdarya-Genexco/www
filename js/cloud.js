@@ -24,6 +24,8 @@ import {
   remove,
   onValue,
   onDisconnect,
+  get as rtGet,
+  update as rtUpdate,
   serverTimestamp as rtNow,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 const app = initializeApp({
@@ -128,58 +130,50 @@ window.cloud.presence = {
 };
 onAuthStateChanged(auth, u => dispatchEvent(new CustomEvent('cloudauth', { detail: u })));
 
-/* private leagues: leagues/{code} holds each member's reserved name and season points; names/{lower-case name}
-   reserves a driver name for one account, so nobody else can use it */
+/* private leagues, kept in the same Realtime Database as multiplayer (mp/lg_{code}/{uid}): each member writes only
+   their own entry (name, points); the creator's entry is marked owner. A name is reserved inside each league:
+   nobody else can join that league under a name already taken there */
 const LCH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const me = () => {
   const u = auth.currentUser;
   if (!u) throw new Error('Sign in to use leagues');
   return u;
 };
+const lref = (code, uid) => ref(rtdb, 'mp/lg_' + code + (uid ? '/' + uid : ''));
 window.cloud.league = {
-  // claim a name for this account; fails if another account already has it
-  async reserve(name) {
-    const u = me(),
-      key = name.trim().toLowerCase();
-    if (!key) throw new Error('Pick a driver name first');
-    await runTransaction(db, async tx => {
-      const r = doc(db, 'names', key),
-        got = await tx.get(r);
-      if (got.exists() && got.data().uid !== u.uid) throw new Error('The name "' + name + '" is taken. Pick another driver name');
-      if (!got.exists()) tx.set(r, { uid: u.uid, name, at: serverTimestamp() });
-    });
-  },
   async create(name, pts) {
     const u = me();
-    await window.cloud.league.reserve(name);
     for (let tries = 0; tries < 5; tries++) {
-      const code = 'WW-' + Array.from({ length: 4 }, () => LCH[(Math.random() * LCH.length) | 0]).join(''),
-        r = doc(db, 'leagues', code);
-      const made = await runTransaction(db, async tx => {
-        if ((await tx.get(r)).exists()) return false;
-        tx.set(r, { owner: u.uid, created: serverTimestamp(), members: { [u.uid]: { name, pts: pts || 0 } } });
-        return true;
-      });
-      if (made) return code;
+      const code = 'WW-' + Array.from({ length: 4 }, () => LCH[(Math.random() * LCH.length) | 0]).join('');
+      if ((await rtGet(lref(code))).exists()) continue;
+      await set(lref(code, u.uid), { name, pts: pts || 0, owner: true, t: rtNow() });
+      return code;
     }
     throw new Error('Could not make a league code, try again');
   },
   async join(code, name, pts) {
-    const u = me(),
-      r = doc(db, 'leagues', code.trim().toUpperCase());
-    const d = await getDoc(r);
-    if (!d.exists()) throw new Error('No league with code ' + code.toUpperCase());
-    await window.cloud.league.reserve(name);
-    await updateDoc(r, { ['members.' + u.uid]: { name, pts: pts || 0 } });
-    return r.id;
+    const u = me();
+    code = code.trim().toUpperCase();
+    if (!/^WW-[A-Z0-9]{4}$/.test(code)) throw new Error('League codes look like WW-4KQ7');
+    const snap = await rtGet(lref(code));
+    if (!snap.exists()) throw new Error('No league with code ' + code);
+    const m = snap.val();
+    for (const id in m)
+      if (id !== u.uid && (m[id].name || '').toLowerCase() === name.toLowerCase())
+        throw new Error('"' + name + '" is already taken in this league. Use another driver name');
+    await set(lref(code, u.uid), { name, pts: pts || 0, owner: !!(m[u.uid] && m[u.uid].owner), t: rtNow() });
+    return code;
   },
   async get(code) {
-    const d = await getDoc(doc(db, 'leagues', code));
-    return d.exists() ? d.data() : null;
+    const snap = await rtGet(lref(code));
+    if (!snap.exists()) return null;
+    const members = snap.val(),
+      owner = Object.values(members).find(x => x.owner);
+    return { members, ownerName: owner ? owner.name : '' };
   },
   async setPts(code, name, pts) {
     const u = me();
-    await updateDoc(doc(db, 'leagues', code), { ['members.' + u.uid]: { name, pts: pts || 0 } });
+    await rtUpdate(lref(code, u.uid), { name, pts: pts || 0 });
   },
   uid: () => (auth.currentUser ? auth.currentUser.uid : null),
 };

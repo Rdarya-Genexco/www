@@ -3449,7 +3449,9 @@ const SONGS = [];
             mem
               .map(m => '<li class="' + (m.me ? 'me' : '') + '"><span>' + esc(m.name) + '</span><b>' + (m.pts || 0) + ' pts</b></li>')
               .join('') +
-            '</ol><div class="lgc">' +
+            '</ol><small>Created by ' +
+            esc(d.ownerName || '?') +
+            '</small><div class="lgc">' +
             esc(code) +
             '</div><small>' +
             mem.length +
@@ -3474,7 +3476,7 @@ const SONGS = [];
       save();
       toast((how === 'create' ? 'League ' : 'Joined ') + code, 0, 'cp');
     } catch (e) {
-      toast(/permission/i.test(e.message) ? 'Leagues are not switched on in the online database yet' : e.message, 1);
+      toast(/permission/i.test(e.message) ? 'Could not save the league online: ' + e.message : e.message, 1);
     }
     showLeague();
   }
