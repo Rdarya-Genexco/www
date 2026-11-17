@@ -3426,10 +3426,6 @@ const SONGS = [];
     const el = $('plg');
     if (!el) return;
     const L = window.cloud && window.cloud.league;
-    if (!cUser || !L) {
-      el.innerHTML = '<span class="hint">Sign in (☁ on the menu) to create or join a league with your friends.</span>';
-      return;
-    }
     const codes = me.leagues || [];
     if (!codes.length) {
       el.innerHTML = '<span class="hint">No leagues yet. Create one and send the code to your friends, or join theirs.</span>';
@@ -3438,9 +3434,14 @@ const SONGS = [];
     const cards = [];
     for (const code of codes) {
       try {
-        const d = await L.get(code);
+        const loc = me.localLeagues && me.localLeagues[code];
+        const d = loc
+          ? { members: { me: { name: me.name, pts: me.seasonPts } }, ownerName: loc.owner }
+          : cUser && L
+            ? await L.get(code)
+            : null;
         if (!d) continue;
-        const uid = L.uid(),
+        const uid = loc ? 'me' : L.uid(),
           mem = Object.entries(d.members || {})
             .map(([u, m]) => ({ ...m, me: u === uid }))
             .sort((a, b) => b.pts - a.pts);
@@ -3464,20 +3465,35 @@ const SONGS = [];
     }
     if ($('plg')) $('plg').innerHTML = '<div class="lgs">' + cards.join('') + '</div>';
   }
+  const LCH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789',
+    lgCode = () => 'WW-' + Array.from({ length: 4 }, () => LCH[(Math.random() * LCH.length) | 0]).join('');
   async function leagueAct(how) {
     const L = window.cloud && window.cloud.league;
-    if (!cUser || !L) return toast('Sign in to use leagues', 1);
-    try {
-      const code =
-        how === 'create'
-          ? await L.create(me.name, me.seasonPts)
-          : await L.join((($('lgcode') && $('lgcode').value) || '').trim(), me.name, me.seasonPts);
-      me.leagues = [...new Set([...(me.leagues || []), code])];
-      save();
-      toast((how === 'create' ? 'League ' : 'Joined ') + code, 0, 'cp');
-    } catch (e) {
-      toast(/permission/i.test(e.message) ? 'Could not save the league online: ' + e.message : e.message, 1);
+    let code = null;
+    if (how === 'create') {
+      // always works: online when signed in, otherwise kept on this device
+      if (cUser && L)
+        try {
+          code = await L.create(me.name, me.seasonPts);
+        } catch (e) {
+          console.warn('online league failed, making it on this device', e);
+        }
+      if (!code) {
+        code = lgCode();
+        me.localLeagues = me.localLeagues || {};
+        me.localLeagues[code] = { owner: me.name };
+      }
+    } else {
+      if (!cUser || !L) return toast('Sign in (☁ on the menu) to join a friend\'s league', 1);
+      try {
+        code = await L.join((($('lgcode') && $('lgcode').value) || '').trim(), me.name, me.seasonPts);
+      } catch (e) {
+        return toast(e.message, 1);
+      }
     }
+    me.leagues = [...new Set([...(me.leagues || []), code])];
+    save();
+    toast((how === 'create' ? 'League created · ' : 'Joined ') + code, 0, 'cp');
     showLeague();
   }
   // after a race: update your points in every league you're in
