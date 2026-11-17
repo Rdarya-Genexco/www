@@ -1,0 +1,23 @@
+rules_version = '2';
+// Firestore security rules for Worldwide Wheels. Publish in the Firebase console: Firestore Database > Rules
+service cloud.firestore {
+  match /databases/{db}/documents {
+    // each player's own save
+    match /players/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // reserved driver names: anyone signed in can read; you can only claim a free name for yourself
+    match /names/{name} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+    }
+    // private leagues: signed-in players can read; the creator makes it; members only change their own entry
+    match /leagues/{code} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]);
+    }
+  }
+}

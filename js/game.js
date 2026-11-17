@@ -2490,6 +2490,7 @@ const SONGS = [];
     });
     me.history = me.history.slice(0, 10);
     save();
+    syncLeagues();
     return { rk, place, pts, nb };
   }
   function finish() {
@@ -3419,7 +3420,72 @@ const SONGS = [];
     blip(700, 0.14, 'sine');
     showGarage();
   }
+  /* private leagues: create one and share its code, or join a friend's. Each card lists the members' names
+     (reserved to their accounts) with their points this month, above the league code */
+  async function fillLeagues() {
+    const el = $('plg');
+    if (!el) return;
+    const L = window.cloud && window.cloud.league;
+    if (!cUser || !L) {
+      el.innerHTML = '<span class="hint">Sign in (☁ on the menu) to create or join a league with your friends.</span>';
+      return;
+    }
+    const codes = me.leagues || [];
+    if (!codes.length) {
+      el.innerHTML = '<span class="hint">No leagues yet. Create one and send the code to your friends, or join theirs.</span>';
+      return;
+    }
+    const cards = [];
+    for (const code of codes) {
+      try {
+        const d = await L.get(code);
+        if (!d) continue;
+        const uid = L.uid(),
+          mem = Object.entries(d.members || {})
+            .map(([u, m]) => ({ ...m, me: u === uid }))
+            .sort((a, b) => b.pts - a.pts);
+        cards.push(
+          '<div class="card lg"><ol>' +
+            mem
+              .map(m => '<li class="' + (m.me ? 'me' : '') + '"><span>' + esc(m.name) + '</span><b>' + (m.pts || 0) + ' pts</b></li>')
+              .join('') +
+            '</ol><div class="lgc">' +
+            esc(code) +
+            '</div><small>' +
+            mem.length +
+            (mem.length === 1 ? ' player' : ' players') +
+            ' · share this code</small></div>',
+        );
+      } catch (e) {
+        cards.push('<span class="hint err">' + esc(code) + ': ' + esc(e.message) + '</span>');
+      }
+    }
+    if ($('plg')) $('plg').innerHTML = '<div class="lgs">' + cards.join('') + '</div>';
+  }
+  async function leagueAct(how) {
+    const L = window.cloud && window.cloud.league;
+    if (!cUser || !L) return toast('Sign in to use leagues', 1);
+    try {
+      const code =
+        how === 'create'
+          ? await L.create(me.name, me.seasonPts)
+          : await L.join((($('lgcode') && $('lgcode').value) || '').trim(), me.name, me.seasonPts);
+      me.leagues = [...new Set([...(me.leagues || []), code])];
+      save();
+      toast((how === 'create' ? 'League ' : 'Joined ') + code, 0, 'cp');
+    } catch (e) {
+      toast(/permission/i.test(e.message) ? 'Leagues are not switched on in the online database yet' : e.message, 1);
+    }
+    showLeague();
+  }
+  // after a race: update your points in every league you're in
+  function syncLeagues() {
+    const L = window.cloud && window.cloud.league;
+    if (!cUser || !L || !me || !(me.leagues || []).length) return;
+    for (const c of me.leagues) L.setPts(c, me.name, me.seasonPts).catch(() => {});
+  }
   function showLeague() {
+    setTimeout(fillLeagues, 0);
     reloadStore();
     roll(me);
     ensureBots();
@@ -3480,6 +3546,10 @@ const SONGS = [];
         '</b><small>Races</small></div><div><b>' +
         me.wins +
         '</b><small>Wins</small></div></div>' +
+        '<div class="sec">Private leagues</div><div id="plg"><span class="hint">Loading…</span></div>' +
+        '<div class="row"><button class="btn" data-a="lgcreate">Create a league</button>' +
+        '<input id="lgcode" class="fld" maxlength="7" placeholder="Code e.g. WW-4KQ7" aria-label="League code" style="max-width:190px">' +
+        '<button class="btn alt" data-a="lgjoin">Join</button></div>' +
         '<div class="sec">Monthly leaderboard</div><ul>' +
         rows
           .slice(0, 8)
@@ -3549,6 +3619,8 @@ const SONGS = [];
     else if (a === 'garage') showGarage();
     else if (a === 'shop') showShop();
     else if (a === 'fshop') showFShop();
+    else if (a === 'lgcreate') leagueAct('create');
+    else if (a === 'lgjoin') leagueAct('join');
     else if (a === 'fbuy') {
       const l = fLvl(v),
         c = FCOST[l];
