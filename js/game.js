@@ -1024,7 +1024,7 @@ const SONGS = [];
         o: [-0.7, 0, 0.7][(Math.random() * 3) | 0] + (Math.random() - 0.5) * 0.2,
         sp: MAXS * (0.22 + Math.random() * 0.3),
         col: TC[i % TC.length],
-        body: ['coupe', 'hatch', 'wedge', 'van'][(i * 7 + 3) % 4],
+        body: ['toro', 'rosso', 'mclaren720', 'veyra', 'divo', 'senna', 'regera', 'jesko', 'bolide', 'sport300'][(i * 7 + 3) % 10], // the road is full of supercars
         pd: 0,
       };
       c.s = Math.floor(c.z / SL) % N;
