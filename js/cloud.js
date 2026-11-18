@@ -190,3 +190,25 @@ window.cloud.league = {
   },
   uid: () => (auth.currentUser ? auth.currentUser.uid : null),
 };
+
+/* tournaments: a lobby of open tournaments (mp/tn_lobby/{code}) and each tournament's scores
+   (mp/tn_score/{code}/{uid} = {name, pts}); the race itself runs in the private room 'room_' + code */
+window.cloud.tourney = {
+  async host(name, mins) {
+    const u = me();
+    const code = Array.from({ length: 6 }, () => LCH[(Math.random() * LCH.length) | 0]).join('');
+    const ends = window.cloud.mp.now() + mins * 60000;
+    await set(ref(rtdb, 'mp/tn_lobby/' + code), { host: name, uid: u.uid, ends });
+    return { code, ends };
+  },
+  watchLobby(cb) {
+    return onValue(ref(rtdb, 'mp/tn_lobby'), s => cb(s.val() || {}), () => cb({}));
+  },
+  setPts(code, name, pts) {
+    const u = me();
+    return set(ref(rtdb, 'mp/tn_score/' + code + '/' + u.uid), { name, pts });
+  },
+  watchScore(code, cb) {
+    return onValue(ref(rtdb, 'mp/tn_score/' + code), s => cb(s.val() || {}), () => cb({}));
+  },
+};

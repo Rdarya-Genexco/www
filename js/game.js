@@ -2049,6 +2049,89 @@ const SONGS = [];
         '<button class="lnk" data-a="mp">Back</button>',
     );
   }
+  /* ---------- lobby and tournaments ----------
+     Host a tournament (10 minutes) or join one from the lobby. Everyone in it races together in its own room,
+     maps rotate as usual, every lap scores 2 points, and whoever has the most points when time runs out wins */
+  const TN_MIN = 10;
+  let tn = null, // { code, ends, pts, scores, stop }
+    lobbyStop = null,
+    lobbyData = {};
+  function showLobby() {
+    if (!cUser || !window.cloud || !window.cloud.tourney) {
+      cMsg = 'Sign in to host or join tournaments.';
+      return showCloud();
+    }
+    ovSet(
+      '<h1 class="sm">Lobby</h1><p>Tournaments last ' +
+        TN_MIN +
+        ' minutes · 2 pts a lap · most points wins</p>' +
+        '<div class="menu"><button class="mb" data-a="tnhost"><b>🏆 Host a tournament</b><small>Open a tournament anyone in the lobby can join</small></button></div>' +
+        '<div class="sec">Open tournaments</div><div id="tnl"><span class="hint">Looking for tournaments…</span></div>' +
+        '<button class="btn alt" data-a="menu">Back</button>',
+    );
+    lobbyStop = window.cloud.tourney.watchLobby(all => {
+      lobbyData = all;
+      const el = $('tnl');
+      if (!el) return;
+      const now = window.cloud.mp.now(),
+        open = Object.entries(all).filter(([, t]) => t.ends > now);
+      el.innerHTML = open.length
+        ? '<div class="menu">' +
+          open
+            .map(
+              ([code, t]) =>
+                '<button class="mb" data-a="tnjoin" data-v="' +
+                code +
+                '"><b>' +
+                esc(t.host) +
+                '\'s tournament</b><small>' +
+                Math.max(1, Math.ceil((t.ends - now) / 60000)) +
+                ' min left · tap to join</small></button>',
+            )
+            .join('') +
+          '</div>'
+        : '<span class="hint">No tournaments open right now. Host one!</span>';
+    });
+    onlineStop = () => {
+      if (lobbyStop) lobbyStop();
+      lobbyStop = null;
+    };
+  }
+  async function tnStart(code, ends) {
+    tn = { code, ends, pts: 0, scores: {}, done: false };
+    tn.stop = window.cloud.tourney.watchScore(code, sc => tn && (tn.scores = sc));
+    window.cloud.tourney.setPts(code, me.name, 0).catch(() => {});
+    startMp(code);
+    toast('Tournament on · ' + TN_MIN + ' minutes · most points wins', 0, 'cp');
+  }
+  function tnStandings() {
+    if (!tn) return [];
+    const rows = Object.values(tn.scores || {});
+    if (!rows.some(r => r.name === me.name)) rows.push({ name: me.name, pts: tn.pts });
+    return rows.sort((a, b) => b.pts - a.pts);
+  }
+  function tnFinish() {
+    if (!tn || tn.done) return;
+    tn.done = true;
+    const R = tnStandings(),
+      win = R[0];
+    if (tn.stop) tn.stop();
+    stopMp();
+    state = 'menu';
+    spawn(false);
+    document.body.classList.remove('play');
+    ovSet(
+      '<h1 class="sm">Tournament over</h1><p>🏆 ' +
+        esc(win ? win.name : me.name) +
+        ' wins with ' +
+        (win ? win.pts : 0) +
+        ' pts</p><ul>' +
+        R.map((r, i) => '<li class="' + (r.name === me.name ? 'me' : '') + '"><span>' + (i + 1) + '. ' + esc(r.name) + '</span><b>' + r.pts + ' pts</b></li>').join('') +
+        '</ul><button class="btn" data-a="lobby">Back to lobby</button><button class="btn alt" data-a="menu">Menu</button>',
+    );
+    if (win && win.name === me.name) confetti(80);
+    tn = null;
+  }
   function startMp(room = 'world') {
     if (!cUser || !window.cloud || !window.cloud.mp) {
       cMsg = 'Sign in to race online with other drivers.';
@@ -2068,6 +2151,10 @@ const SONGS = [];
     begin('mp');
   }
   function stopMp() {
+    if (tn && !tn.done) {
+      if (tn.stop) tn.stop();
+      tn = null;
+    }
     if (!mpOn) return;
     mpOn = false;
     if (window.cloud && window.cloud.mp) window.cloud.mp.leave();
@@ -2400,6 +2487,10 @@ const SONGS = [];
         save();
       }
       lap = laps.length + 1;
+      if (tn) {
+        tn.pts += 2;
+        window.cloud.tourney.setPts(tn.code, me.name, tn.pts).catch(() => {});
+      }
       toast('Lap ' + laps.length + ' · ' + fmt(lt) + ' · +2 pts', 0, 'cp');
       return;
     }
@@ -3021,6 +3112,7 @@ const SONGS = [];
         '<button class="mb" data-a="mp"><b>Multiplayer</b><small>Race other drivers online or friends in a private room · maps rotate every ' +
         MP_MIN +
         ' min · +2 pts a lap</small></button>' +
+        '<button class="mb" data-a="lobby"><b>Lobby</b><small>Host or join a tournament</small></button>' +
         '<button class="mb" data-a="tt"><b>Time Trial</b><small>Solo run, no rivals · best ' +
         (bestTT(me) ? fmt(bestTT(me)) : '–') +
         '</small></button>' +
@@ -3614,6 +3706,17 @@ const SONGS = [];
     if (a === 'bots' || a === 'tt') begin(a);
     else if (a === 'mp') showMp();
     else if (a === 'mpgo') startMp(v);
+    else if (a === 'lobby') showLobby();
+    else if (a === 'tnhost')
+      window.cloud.tourney
+        .host(me.name, TN_MIN)
+        .then(t => tnStart(t.code, t.ends))
+        .catch(e => toast('Could not host: ' + e.message, 1));
+    else if (a === 'tnjoin') {
+      const t = lobbyData[v];
+      if (t && t.ends > window.cloud.mp.now()) tnStart(v, t.ends);
+      else toast('That tournament has finished', 1);
+    }
     else if (a === 'fadd') {
       friends[v] = { n: (recent[v] && recent[v].n) || 'Driver' };
       saveFriends();
@@ -4527,6 +4630,20 @@ const SONGS = [];
       g = '+' + (((Math.min(rk[0].d, tot) - rk[i].d) / tot) * 100).toFixed(1) + '% behind';
     else if (i === 0 && rk.length > 1 && !rk[i].fin)
       g = '+' + (((rk[0].d - rk[1].d) / tot) * 100).toFixed(1) + '% ahead';
+    if (tn && mode === 'mp') {
+      const left = Math.max(0, tn.ends - window.cloud.mp.now()),
+        R = tnStandings(),
+        lead = R[0];
+      g =
+        '🏆 ' +
+        Math.floor(left / 60000) +
+        ':' +
+        String(Math.floor((left % 60000) / 1000)).padStart(2, '0') +
+        ' left · You ' +
+        tn.pts +
+        (lead && lead.name !== me.name ? ' · Leader ' + lead.name + ' ' + lead.pts : ' · You lead');
+      if (left <= 0) setTimeout(tnFinish, 0);
+    }
     $('gap').textContent = g;
     $('st').innerHTML = rk
       .map(
