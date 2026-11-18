@@ -1771,6 +1771,7 @@ const SONGS = [];
   ['pointerdown', 'touchend', 'click', 'keydown'].forEach(t => addEventListener(t, () => syncSong(), true));
   /* engine character per car (js/cars.js ENGINES): pitch, second voice ratio and wave, brightness, burble */
   const ENG = {
+    ev: { p: 2.6, w2: 'sine', r: 1.5, f: 2.2, b: 0 }, // electric: smooth high whine, no rumble
     i4: { p: 1, w2: 'square', r: 0.5, f: 1, b: 0 },
     v8: { p: 0.72, w2: 'square', r: 0.5, f: 0.75, b: 0.45 },
     v12: { p: 1.45, w2: 'sawtooth', r: 2.01, f: 1.7, b: 0 },

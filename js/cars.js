@@ -33,14 +33,14 @@ const TOP_SPEEDS = {
   bolide: 250,
 };
 
-/* Engine sound of each car: i4 (four-cylinder buzz), v8 (deep burble), v12 (high howl), w16 (huge roar). */
+/* Engine sound of each car: ev (electric whine, the starter e-cars), i4 (four-cylinder buzz), v8 (deep burble), v12 (high howl), w16 (huge roar). */
 const ENGINES = {
-  coupe: 'i4',
-  hatch: 'i4',
-  wedge: 'i4',
-  van: 'i4',
-  roadster: 'i4',
-  pickup: 'v8',
+  coupe: 'ev',
+  hatch: 'ev',
+  wedge: 'ev',
+  van: 'ev',
+  roadster: 'ev',
+  pickup: 'ev',
   toro: 'v12',
   rosso: 'v12',
   mclaren720: 'v8',
@@ -92,8 +92,8 @@ const CAR_LIST = [
   // ---------------- starter cars (free) ----------------
   {
     id: 'coupe',
-    name: 'Coupe',
-    realName: 'Generic sports coupe',
+    name: 'e-Coupe',
+    realName: 'Electric sports coupe',
     stats: { accel: 1, handling: 1, damage: 1 },
     desc: 'Balanced all-rounder',
     shape: {
@@ -113,8 +113,8 @@ const CAR_LIST = [
   },
   {
     id: 'hatch',
-    name: 'Hatch',
-    realName: 'Generic hot hatch',
+    name: 'e-Hatch',
+    realName: 'Electric hot hatch',
     stats: { accel: 1.1, handling: 1.12, damage: 1 },
     desc: 'Quick off the line and agile, a little slower flat out',
     shape: {
@@ -134,8 +134,8 @@ const CAR_LIST = [
   },
   {
     id: 'wedge',
-    name: 'Wedge',
-    realName: 'Generic 80s wedge sports car',
+    name: 'e-Wedge',
+    realName: 'Electric wedge sports car',
     stats: { accel: 0.95, handling: 0.9, damage: 1 },
     desc: 'Highest top speed of the starters, but heavy in the bends',
     shape: {
@@ -155,8 +155,8 @@ const CAR_LIST = [
   },
   {
     id: 'van',
-    name: 'Van',
-    realName: 'Generic minivan',
+    name: 'e-Van',
+    realName: 'Electric minivan',
     stats: { accel: 0.9, handling: 0.95, damage: 0.5 },
     desc: 'Slow and steady, takes half damage',
     shape: {
@@ -176,8 +176,8 @@ const CAR_LIST = [
   },
   {
     id: 'roadster',
-    name: 'Roadster',
-    realName: 'Generic open-top roadster',
+    name: 'e-Roadster',
+    realName: 'Electric open-top roadster',
     stats: { accel: 1.05, handling: 1.2, damage: 1.35 },
     desc: 'Sharpest handling, but fragile',
     shape: {
@@ -197,8 +197,8 @@ const CAR_LIST = [
   },
   {
     id: 'pickup',
-    name: 'Pickup',
-    realName: 'Generic pickup truck',
+    name: 'e-Pickup',
+    realName: 'Electric pickup truck',
     stats: { accel: 0.92, handling: 1, damage: 0.65 },
     desc: 'Tough and steady, takes less damage',
     shape: {
