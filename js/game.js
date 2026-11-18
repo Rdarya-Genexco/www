@@ -1085,7 +1085,7 @@ const SONGS = [];
           id: b.id,
           name: b.name,
           col: b.col,
-          body: ['wedge', 'hatch', 'van', 'roadster', 'pickup'][i % 5],
+          body: ['rosso', 'mclaren720', 'veyra', 'divo', 'phantom'][i % 5], // mid-range supercars: not starter cars, not the top ones
           tr: ['', 'block', 'swipe', 'block', 'swipe'][i],
           d,
           z: (d + PZ) % TL,
