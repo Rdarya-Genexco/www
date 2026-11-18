@@ -202,7 +202,21 @@ window.cloud.tourney = {
     return { code, ends };
   },
   watchLobby(cb) {
-    return onValue(ref(rtdb, 'mp/tn_lobby'), s => cb(s.val() || {}), () => cb({}));
+    return onValue(
+      ref(rtdb, 'mp/tn_lobby'),
+      s => {
+        const all = s.val() || {},
+          now = window.cloud.mp.now();
+        // finished tournaments are removed so they don't pile up
+        for (const k in all)
+          if (all[k].ends <= now) {
+            remove(ref(rtdb, 'mp/tn_lobby/' + k)).catch(() => {});
+            delete all[k];
+          }
+        cb(all);
+      },
+      () => cb({}),
+    );
   },
   setPts(code, name, pts) {
     const u = me();

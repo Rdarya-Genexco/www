@@ -2074,7 +2074,8 @@ const SONGS = [];
         '<button class="btn alt" data-a="menu">Back</button>',
     );
     lobbyStop = window.cloud.tourney.watchLobby(all => {
-      lobbyData = all;
+      // only what's open now: the one current official tournament plus player tournaments still running
+      lobbyData = { ...all };
       const el = $('tnl');
       if (!el) return;
       const now = window.cloud.mp.now(),
@@ -2082,6 +2083,7 @@ const SONGS = [];
         slot = Math.floor(now / OFF_MS),
         offCode = 'WWOFF' + slot,
         offEnds = (slot + 1) * OFF_MS;
+      for (const k in lobbyData) if (/^WWOFF/.test(k) && k !== offCode) delete lobbyData[k];
       lobbyData[offCode] = { host: 'Worldwide Wheels', ends: offEnds };
       const official =
         '<div class="menu"><button class="mb" data-a="tnjoin" data-v="' +
