@@ -212,3 +212,47 @@ window.cloud.tourney = {
     return onValue(ref(rtdb, 'mp/tn_score/' + code), s => cb(s.val() || {}), () => cb({}));
   },
 };
+
+/* lobby: players waiting at mp/lobby/{uid}; a challenge goes to mp/lobby_ch/{target}/{from} = {name, room};
+   the answer comes back at mp/lobby_ans/{from} = {room, ok}. Matches race in room 'room_' + room */
+window.cloud.lobby = {
+  enter(name) {
+    const u = me(),
+      r = ref(rtdb, 'mp/lobby/' + u.uid);
+    onDisconnect(r).remove();
+    return set(r, { name, t: rtNow() });
+  },
+  leave() {
+    const u = auth.currentUser;
+    if (!u) return;
+    remove(ref(rtdb, 'mp/lobby/' + u.uid)).catch(() => {});
+    remove(ref(rtdb, 'mp/lobby_ch/' + u.uid)).catch(() => {});
+    remove(ref(rtdb, 'mp/lobby_ans/' + u.uid)).catch(() => {});
+  },
+  watch(cb) {
+    return onValue(ref(rtdb, 'mp/lobby'), s => cb(s.val() || {}), () => cb({}));
+  },
+  challenge(to, name, room) {
+    const u = me();
+    remove(ref(rtdb, 'mp/lobby_ans/' + u.uid)).catch(() => {});
+    return set(ref(rtdb, 'mp/lobby_ch/' + to + '/' + u.uid), { name, room });
+  },
+  cancel(to) {
+    const u = me();
+    return remove(ref(rtdb, 'mp/lobby_ch/' + to + '/' + u.uid));
+  },
+  watchChallenges(cb) {
+    const u = me();
+    return onValue(ref(rtdb, 'mp/lobby_ch/' + u.uid), s => cb(s.val() || {}), () => cb({}));
+  },
+  answer(from, room, ok) {
+    const u = me();
+    remove(ref(rtdb, 'mp/lobby_ch/' + u.uid + '/' + from)).catch(() => {});
+    return set(ref(rtdb, 'mp/lobby_ans/' + from), { room, ok, t: rtNow() });
+  },
+  watchAnswer(cb) {
+    const u = me();
+    return onValue(ref(rtdb, 'mp/lobby_ans/' + u.uid), s => cb(s.val()), () => cb(null));
+  },
+  uid: () => (auth.currentUser ? auth.currentUser.uid : null),
+};

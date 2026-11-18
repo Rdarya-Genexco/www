@@ -1487,7 +1487,10 @@ const SONGS = [];
       muted = !muted;
       muLbl();
     }
-    if (e.code === 'Escape' && (state === 'race' || state === 'count' || state === 'done')) showMenu();
+    if (e.code === 'Escape' && (state === 'race' || state === 'count' || state === 'done')) {
+      if (lm && !lm.done) return toast('No quitting a lobby match!', 1);
+      showMenu();
+    }
   });
   addEventListener('keyup', e => {
     const k = KM[e.code];
@@ -2052,17 +2055,18 @@ const SONGS = [];
   /* ---------- lobby and tournaments ----------
      Host a tournament (10 minutes) or join one from the lobby. Everyone in it races together in its own room,
      maps rotate as usual, every lap scores 2 points, and whoever has the most points when time runs out wins */
-  const TN_MIN = 10;
+  const TN_MIN = 10,
+    OFF_MS = 30 * 60000; // official Worldwide Wheels tournaments: a new one every 30 minutes
   let tn = null, // { code, ends, pts, scores, stop }
     lobbyStop = null,
     lobbyData = {};
-  function showLobby() {
+  function showTourneys() {
     if (!cUser || !window.cloud || !window.cloud.tourney) {
       cMsg = 'Sign in to host or join tournaments.';
       return showCloud();
     }
     ovSet(
-      '<h1 class="sm">Lobby</h1><p>Tournaments last ' +
+      '<h1 class="sm">Tournaments</h1><p>Your tournaments last ' +
         TN_MIN +
         ' minutes · 2 pts a lap · most points wins</p>' +
         '<div class="menu"><button class="mb" data-a="tnhost"><b>🏆 Host a tournament</b><small>Open a tournament anyone in the lobby can join</small></button></div>' +
@@ -2074,8 +2078,18 @@ const SONGS = [];
       const el = $('tnl');
       if (!el) return;
       const now = window.cloud.mp.now(),
-        open = Object.entries(all).filter(([, t]) => t.ends > now);
-      el.innerHTML = open.length
+        open = Object.entries(all).filter(([, t]) => t.ends > now),
+        slot = Math.floor(now / OFF_MS),
+        offCode = 'WWOFF' + slot,
+        offEnds = (slot + 1) * OFF_MS;
+      lobbyData[offCode] = { host: 'Worldwide Wheels', ends: offEnds };
+      const official =
+        '<div class="menu"><button class="mb" data-a="tnjoin" data-v="' +
+        offCode +
+        '"><b>🌍 Worldwide Wheels Official</b><small>Hosted by Worldwide Wheels · ' +
+        Math.max(1, Math.ceil((offEnds - now) / 60000)) +
+        ' min left · a new one every 30 min · tap to join</small></button></div>';
+      el.innerHTML = official + (open.length
         ? '<div class="menu">' +
           open
             .map(
@@ -2090,12 +2104,125 @@ const SONGS = [];
             )
             .join('') +
           '</div>'
-        : '<span class="hint">No tournaments open right now. Host one!</span>';
+        : '<span class="hint">No player tournaments open right now. Host one!</span>');
     });
     onlineStop = () => {
       if (lobbyStop) lobbyStop();
       lobbyStop = null;
     };
+  }
+  /* Lobby: players waiting to race. Pick one and challenge them; they accept or decline. Either can abort before
+     it starts; once the match starts nobody can quit. A match is 3 laps in its own room: first to finish wins */
+  let lm = null, // the lobby match being played: { room, opp, done, stop }
+    lbWait = null; // our outgoing challenge: { to, room, name }
+  function showLobby() {
+    const L = window.cloud && window.cloud.lobby;
+    if (!cUser || !L) {
+      cMsg = 'Sign in to use the lobby.';
+      return showCloud();
+    }
+    L.enter(me.name).catch(e => toast(e.message, 1));
+    const uid = L.uid();
+    ovSet(
+      '<h1 class="sm">Lobby</h1><p>Pick a player to race · 3 laps · first to finish wins</p>' +
+        '<span class="hint">You can cancel before the race starts. Once it starts, nobody can quit.</span>' +
+        '<div class="sec">Challenges for you</div><div id="lbin"><span class="hint">None yet</span></div>' +
+        '<div class="sec">Players in the lobby</div><div id="lbp"><span class="hint">Looking for players…</span></div>' +
+        '<div id="lbw"></div>' +
+        '<button class="btn alt" data-a="lbleave">Leave lobby</button>',
+    );
+    const stops = [
+      L.watch(all => {
+        const el = $('lbp');
+        if (!el) return;
+        const ps = Object.entries(all).filter(([u]) => u !== uid);
+        el.innerHTML = ps.length
+          ? '<div class="menu">' +
+            ps
+              .map(([u, p]) => '<button class="mb" data-a="lbch" data-v="' + u + '"><b>' + esc(p.name) + '</b><small>Tap to challenge</small></button>')
+              .join('') +
+            '</div>'
+          : '<span class="hint">Nobody else is in the lobby yet. Wait here or invite a friend.</span>';
+      }),
+      L.watchChallenges(ch => {
+        const el = $('lbin');
+        if (!el) return;
+        const list = Object.entries(ch);
+        el.innerHTML = list.length
+          ? list
+              .map(
+                ([f, c]) =>
+                  '<div class="row"><span>⚔️ <b>' +
+                  esc(c.name) +
+                  '</b> wants to race</span><button class="btn" data-a="lbok" data-v="' +
+                  f +
+                  '|' +
+                  c.room +
+                  '|' +
+                  esc(c.name) +
+                  '">Accept</button><button class="btn alt" data-a="lbno" data-v="' +
+                  f +
+                  '|' +
+                  c.room +
+                  '">Decline</button></div>',
+              )
+              .join('')
+          : '<span class="hint">None yet</span>';
+      }),
+      L.watchAnswer(a => {
+        if (!a || !lbWait || a.room !== lbWait.room) return;
+        if (a.ok) lmStart(lbWait.room, lbWait.name);
+        else {
+          toast(lbWait.name + ' declined', 1);
+          lbWait = null;
+          lbWaitHtml();
+        }
+      }),
+    ];
+    onlineStop = () => stops.forEach(f => f && f());
+  }
+  function lbWaitHtml() {
+    const el = $('lbw');
+    if (el)
+      el.innerHTML = lbWait
+        ? '<div class="row"><span>Waiting for <b>' + esc(lbWait.name) + '</b> to accept…</span><button class="btn alt" data-a="lbcancel">Cancel</button></div>'
+        : '';
+  }
+  function lmStart(room, opp) {
+    lbWait = null;
+    lm = { room, opp, done: false };
+    window.cloud.lobby.leave();
+    lm.stop = window.cloud.tourney.watchScore('lm_' + room, sc => {
+      if (!lm || lm.done) return;
+      const winner = Object.entries(sc).find(([u, r]) => r.pts >= 3 && u !== window.cloud.lobby.uid());
+      if (winner) lmEnd(false, winner[1].name);
+    });
+    startMp(room);
+    toast('Match vs ' + opp + ' · 3 laps · no quitting!', 0, 'cp');
+  }
+  function lmEnd(won, who) {
+    if (!lm || lm.done) return;
+    lm.done = true;
+    if (lm.stop) lm.stop();
+    const opp = lm.opp;
+    lm = null;
+    stopMp();
+    state = 'menu';
+    spawn(false);
+    document.body.classList.remove('play');
+    if (won && me) {
+      me.points += 25;
+      me.careerPts += 25;
+      save();
+    }
+    ovSet(
+      '<h1 class="sm">' +
+        (won ? 'You won! 🏆' : 'You lost') +
+        '</h1><p>' +
+        (won ? 'You beat ' + esc(opp) + ' · +25 pts' : esc(who || opp) + ' finished first') +
+        '</p><button class="btn" data-a="lobby">Back to lobby</button><button class="btn alt" data-a="menu">Menu</button>',
+    );
+    if (won) confetti(80);
   }
   async function tnStart(code, ends) {
     tn = { code, ends, pts: 0, scores: {}, done: false };
@@ -2487,6 +2614,12 @@ const SONGS = [];
         save();
       }
       lap = laps.length + 1;
+      if (lm && !lm.done) {
+        window.cloud.tourney.setPts('lm_' + lm.room, me.name, laps.length).catch(() => {});
+        if (laps.length >= 3) lmEnd(true);
+        else toast('Lap ' + laps.length + ' of 3 vs ' + lm.opp, 0, 'cp');
+        return;
+      }
       if (tn) {
         tn.pts += 2;
         window.cloud.tourney.setPts(tn.code, me.name, tn.pts).catch(() => {});
@@ -3112,7 +3245,8 @@ const SONGS = [];
         '<button class="mb" data-a="mp"><b>Multiplayer</b><small>Race other drivers online or friends in a private room · maps rotate every ' +
         MP_MIN +
         ' min · +2 pts a lap</small></button>' +
-        '<button class="mb" data-a="lobby"><b>Lobby</b><small>Host or join a tournament</small></button>' +
+        '<button class="mb" data-a="lobby"><b>Lobby</b><small>Pick a player and race them</small></button>' +
+        '<button class="mb" data-a="tourneys"><b>Tournaments</b><small>Host, join or play the official ones</small></button>' +
         '<button class="mb" data-a="tt"><b>Time Trial</b><small>Solo run, no rivals · best ' +
         (bestTT(me) ? fmt(bestTT(me)) : '–') +
         '</small></button>' +
@@ -3707,6 +3841,30 @@ const SONGS = [];
     else if (a === 'mp') showMp();
     else if (a === 'mpgo') startMp(v);
     else if (a === 'lobby') showLobby();
+    else if (a === 'tourneys') showTourneys();
+    else if (a === 'lbleave') {
+      if (lbWait) window.cloud.lobby.cancel(lbWait.to).catch(() => {});
+      lbWait = null;
+      window.cloud.lobby.leave();
+      showMenu();
+    } else if (a === 'lbch') {
+      const name = (b.querySelector('b') || {}).textContent || 'Driver',
+        room = Array.from({ length: 6 }, () => LCH[(Math.random() * LCH.length) | 0]).join('');
+      if (lbWait) window.cloud.lobby.cancel(lbWait.to).catch(() => {});
+      lbWait = { to: v, room, name };
+      window.cloud.lobby.challenge(v, me.name, room).catch(e => toast(e.message, 1));
+      lbWaitHtml();
+    } else if (a === 'lbcancel') {
+      if (lbWait) window.cloud.lobby.cancel(lbWait.to).catch(() => {});
+      lbWait = null;
+      lbWaitHtml();
+    } else if (a === 'lbok') {
+      const [f, room, name] = v.split('|');
+      window.cloud.lobby.answer(f, room, true).then(() => lmStart(room, name));
+    } else if (a === 'lbno') {
+      const [f, room] = v.split('|');
+      window.cloud.lobby.answer(f, room, false);
+    }
     else if (a === 'tnhost')
       window.cloud.tourney
         .host(me.name, TN_MIN)
