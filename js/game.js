@@ -3457,7 +3457,9 @@ const SONGS = [];
             '</div><small>' +
             mem.length +
             (mem.length === 1 ? ' player' : ' players') +
-            ' · share this code</small></div>',
+            ' · share this code</small><button class="btn alt" data-a="lgdel" data-v="' +
+            esc(code) +
+            '">Delete league</button></div>',
         );
       } catch (e) {
         cards.push('<span class="hint err">' + esc(code) + ': ' + esc(e.message) + '</span>');
@@ -3639,6 +3641,17 @@ const SONGS = [];
     else if (a === 'fshop') showFShop();
     else if (a === 'lgcreate') leagueAct('create');
     else if (a === 'lgjoin') leagueAct('join');
+    else if (a === 'lgdel') {
+      // delete from this device straight away; online, the creator removes the league, others leave it
+      const L = window.cloud && window.cloud.league,
+        local = me.localLeagues && me.localLeagues[v];
+      if (local) delete me.localLeagues[v];
+      else if (cUser && L) L.del(v).catch(e => console.warn('league delete', e));
+      me.leagues = (me.leagues || []).filter(c => c !== v);
+      save();
+      toast('League ' + v + ' deleted', 0, 'cp');
+      showLeague();
+    }
     else if (a === 'fbuy') {
       const l = fLvl(v),
         c = FCOST[l];

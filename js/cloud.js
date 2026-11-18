@@ -175,5 +175,18 @@ window.cloud.league = {
     const u = me();
     await rtUpdate(lref(code, u.uid), { name, pts: pts || 0 });
   },
+  // delete: the creator removes the whole league; anyone else just leaves it
+  async del(code) {
+    const u = me();
+    const mine = await rtGet(lref(code, u.uid));
+    if (mine.exists() && mine.val().owner)
+      try {
+        await remove(lref(code));
+        return;
+      } catch (e) {
+        /* not allowed to remove other entries: fall back to leaving */
+      }
+    await remove(lref(code, u.uid));
+  },
   uid: () => (auth.currentUser ? auth.currentUser.uid : null),
 };
