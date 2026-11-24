@@ -111,7 +111,7 @@ const CAR_LIST = [
   {
     id: 'coupe',
     name: 'Corsa C8',
-    realName: 'Chevrolet Corvette C8',
+    realName: 'American mid-engine V8 sports car',
     stats: { accel: 1, handling: 1, damage: 1 },
     desc: 'Balanced all-rounder, mid-engine V8',
     shape: {
@@ -133,7 +133,7 @@ const CAR_LIST = [
   {
     id: 'hatch',
     name: 'Ampere GT',
-    realName: 'Audi e-tron GT',
+    realName: 'German electric grand tourer',
     stats: { accel: 1.1, handling: 1.12, damage: 1 },
     desc: 'Quick off the line and agile, all-electric',
     shape: {
@@ -155,7 +155,7 @@ const CAR_LIST = [
   {
     id: 'wedge',
     name: 'Kanyon RS',
-    realName: 'Porsche 718 Cayman GT4 RS',
+    realName: 'German mid-engine track coupe',
     stats: { accel: 0.95, handling: 0.9, damage: 1 },
     desc: 'Highest top speed of the starters, but heavy in the bends',
     shape: {
@@ -177,7 +177,7 @@ const CAR_LIST = [
   {
     id: 'van',
     name: 'Nova E',
-    realName: 'Rimac Nevera',
+    realName: 'Electric hypercar',
     stats: { accel: 0.9, handling: 0.95, damage: 0.5 },
     desc: 'Electric hypercar · sturdy, takes half damage',
     shape: {
@@ -199,7 +199,7 @@ const CAR_LIST = [
   {
     id: 'roadster',
     name: 'Trident MC',
-    realName: 'Maserati MC20',
+    realName: 'Italian mid-engine sports car',
     stats: { accel: 1.05, handling: 1.2, damage: 1.35 },
     desc: 'Sharpest handling, but fragile',
     shape: {
@@ -221,7 +221,7 @@ const CAR_LIST = [
   {
     id: 'pickup',
     name: 'Vanta S',
-    realName: 'Hyundai Verna',
+    realName: 'Sporty family sedan',
     stats: { accel: 0.92, handling: 1, damage: 0.65 },
     desc: 'Family sedan · tough and steady',
     shape: {
@@ -249,7 +249,7 @@ const CAR_LIST = [
     realName: 'Classic American V8 pony car',
     stats: { accel: 1.1, handling: 1.0, damage: 0.95 },
     desc: 'Classic V8 pony car, loud and fun',
-    shape: { L: 4.8, W: 1.92, r: 0.17, hood: 0.6, roof: 1.16, deck: 0.7, ws: -0.6, rf: 0.0, rr: 0.6, rw: 1.3, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 4.8, W: 1.92, r: 0.14, hood: 0.6, roof: 1.0, deck: 0.7, ws: -0.6, rf: 0.0, rr: 0.6, rw: 1.3, flare: 0.04 },
     style: { lights: 'bar', exhaust: 'twin', stripes: '#f2f2f0' },
     look2d: 'rosso',
   },
@@ -259,7 +259,7 @@ const CAR_LIST = [
     realName: 'Big supercharged American muscle coupe',
     stats: { accel: 1.16, handling: 0.92, damage: 0.9 },
     desc: 'Big, heavy muscle with a supercharged roar',
-    shape: { L: 5.0, W: 1.98, r: 0.18, hood: 0.64, roof: 1.2, deck: 0.72, ws: -0.55, rf: 0.05, rr: 0.7, rw: 1.4, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 5.0, W: 1.98, r: 0.14, hood: 0.64, roof: 1.0, deck: 0.72, ws: -0.55, rf: 0.05, rr: 0.7, rw: 1.4, flare: 0.04 },
     style: { lights: 'bar', exhaust: 'quad', stripes: '#13113a' },
     look2d: 'rosso',
   },
@@ -269,7 +269,7 @@ const CAR_LIST = [
     realName: 'Track-tuned American muscle coupe',
     stats: { accel: 1.14, handling: 1.08, damage: 0.95 },
     desc: 'Track-ready muscle, sharp in the bends',
-    shape: { L: 4.78, W: 1.9, r: 0.15, hood: 0.56, roof: 1.1, deck: 0.68, ws: -0.65, rf: -0.05, rr: 0.55, rw: 1.25, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 4.78, W: 1.9, r: 0.14, hood: 0.56, roof: 1.0, deck: 0.68, ws: -0.65, rf: -0.05, rr: 0.55, rw: 1.25, flare: 0.04 },
     style: { lights: 'pair', exhaust: 'quad', wing: 1 },
     look2d: 'rosso',
   },
@@ -279,7 +279,7 @@ const CAR_LIST = [
     realName: 'Four-door American muscle sedan',
     stats: { accel: 1.12, handling: 0.98, damage: 0.85 },
     desc: 'Four-door muscle sedan with a big V8',
-    shape: { L: 5.1, W: 1.9, r: 0.18, hood: 0.62, roof: 1.24, deck: 0.74, ws: -0.75, rf: -0.15, rr: 0.85, rw: 1.55, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 5.1, W: 1.9, r: 0.14, hood: 0.62, roof: 1.0, deck: 0.74, ws: -0.75, rf: -0.15, rr: 0.85, rw: 1.55, flare: 0.04 },
     style: { lights: 'bar', exhaust: 'twin' },
     look2d: 'rosso',
   },
@@ -289,7 +289,7 @@ const CAR_LIST = [
     realName: 'Japanese twin-turbo all-wheel-drive coupe',
     stats: { accel: 1.24, handling: 1.1, damage: 0.95 },
     desc: 'Twin-turbo all-wheel-drive monster launch',
-    shape: { L: 4.71, W: 1.9, r: 0.16, hood: 0.58, roof: 1.16, deck: 0.7, ws: -0.7, rf: -0.1, rr: 0.55, rw: 1.2, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 4.71, W: 1.9, r: 0.14, hood: 0.58, roof: 1.0, deck: 0.7, ws: -0.7, rf: -0.1, rr: 0.55, rw: 1.2, flare: 0.04 },
     style: { lights: 'ring', exhaust: 'quad', wing: 1 },
     look2d: 'rosso',
   },
@@ -299,7 +299,7 @@ const CAR_LIST = [
     realName: 'German straight-six sports coupe',
     stats: { accel: 1.18, handling: 1.16, damage: 0.95 },
     desc: 'Precise straight-six coupe, best handling of the bunch',
-    shape: { L: 4.8, W: 1.89, r: 0.16, hood: 0.58, roof: 1.18, deck: 0.7, ws: -0.7, rf: -0.1, rr: 0.6, rw: 1.25, flare: 0.04 },
+    shape: { model: { url: 'assets/models/poly-pizza/lamborghini-aventador.glb', recolor: '#efab02', rotateY: 3.14159, wheels: 'Wheel', fit: true }, L: 4.8, W: 1.89, r: 0.14, hood: 0.58, roof: 1.0, deck: 0.7, ws: -0.7, rf: -0.1, rr: 0.6, rw: 1.25, flare: 0.04 },
     style: { lights: 'pair', exhaust: 'quad' },
     look2d: 'rosso',
   },
