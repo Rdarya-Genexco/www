@@ -2152,3 +2152,70 @@ body:not(.play) #radiob {
   letter-spacing: 0.08em;
   color: #6ff0e4;
 }
+/* tournaments: cards with live points tables, and the in-race table */
+#ov .tng {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 10px;
+  width: min(860px, 100%);
+}
+#ov .tnc {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+}
+.tnt {
+  margin: 4px 0;
+  padding-left: 20px;
+  font-size: 15px;
+}
+.tnt li,
+#tntab li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tnt0 {
+  opacity: 0.6;
+}
+#tnbtn {
+  display: none;
+  position: fixed;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  top: 45%;
+  z-index: 6;
+  padding: 6px 14px 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 193, 94, 0.7);
+  background: rgba(19, 17, 58, 0.8);
+  color: var(--ink);
+  font: 700 16px 'Big Shoulders Display', Impact, sans-serif;
+  cursor: pointer;
+}
+body.tnon.play #tnbtn {
+  display: block;
+}
+#tntab {
+  position: fixed;
+  right: 12px;
+  top: 52%;
+  z-index: 8;
+  width: min(300px, 80vw);
+  max-height: 40vh;
+  overflow: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(19, 17, 58, 0.92);
+  border: 1px solid rgba(255, 193, 94, 0.6);
+  color: var(--ink);
+  font-size: 16px;
+}
+#tntab ol {
+  padding-left: 0;
+  list-style: none;
+  margin: 8px 0;
+}
+#tntab li.me {
+  color: #ffc15e;
+}

@@ -1525,6 +1525,7 @@ const SONGS = [];
   });
   addEventListener('contextmenu', e => e.preventDefault());
   $('radiob').addEventListener('click', () => nextSong());
+  $('tnbtn').addEventListener('click', () => ($('tntab') ? tnTable(false) : tnTable(true)));
 
   /* ---------- audio: engine, sfx, music ---------- */
   let ac,
@@ -2057,7 +2058,16 @@ const SONGS = [];
      Host a tournament (10 minutes) or join one from the lobby. Everyone in it races together in its own room,
      maps rotate as usual, every lap scores 2 points, and whoever has the most points when time runs out wins */
   const TN_MIN = 10,
-    OFF_MS = 30 * 60000; // official Worldwide Wheels tournaments: a new one every 30 minutes
+    OFF_MS = 30 * 60000, // official tournaments: each runs 30 minutes, then a new one of the same name starts
+    OFFICIAL = [
+      { n: 'Sunset Sprint Cup', i: '🌅' },
+      { n: 'Monsoon Masters', i: '🌧️' },
+      { n: 'Night Neon Series', i: '🌃' },
+      { n: 'Desert Dash Open', i: '🏜️' },
+      { n: 'Coastal Cruise Classic', i: '🌊' },
+      { n: 'Mountain King Trophy', i: '⛰️' },
+      { n: 'Turbo Titans League', i: '⚡' },
+    ];
   let tn = null, // { code, ends, pts, scores, stop }
     lobbyStop = null,
     lobbyData = {};
@@ -2071,44 +2081,65 @@ const SONGS = [];
         TN_MIN +
         ' minutes · 2 pts a lap · most points wins</p>' +
         '<div class="menu"><button class="mb" data-a="tnhost"><b>🏆 Host a tournament</b><small>Open a tournament anyone in the lobby can join</small></button></div>' +
-        '<div class="sec">Open tournaments</div><div id="tnl"><span class="hint">Looking for tournaments…</span></div>' +
+        '<div class="sec">Tournaments running now</div><div id="tnl"><span class="hint">Looking for tournaments…</span></div>' +
         '<button class="btn alt" data-a="menu">Back</button>',
     );
-    lobbyStop = window.cloud.tourney.watchLobby(all => {
-      // only what's open now: the one current official tournament plus player tournaments still running
-      lobbyData = { ...all };
+    // live points tables: one score watcher per tournament on screen
+    const tw = {},
+      tables = {};
+    const table = code => {
+      const R = Object.values(tables[code] || {}).sort((x, y) => y.pts - x.pts);
+      return R.length
+        ? '<ol class="tnt">' + R.slice(0, 5).map(r => '<li><span>' + esc(r.name) + '</span><b>' + r.pts + '</b></li>').join('') + '</ol>'
+        : '<small class="tnt0">No players yet</small>';
+    };
+    const draw = () => {
       const el = $('tnl');
       if (!el) return;
       const now = window.cloud.mp.now(),
-        open = Object.entries(all).filter(([, t]) => t.ends > now),
-        slot = Math.floor(now / OFF_MS),
-        offCode = 'WWOFF' + slot,
-        offEnds = (slot + 1) * OFF_MS;
-      for (const k in lobbyData) if (/^WWOFF/.test(k) && k !== offCode) delete lobbyData[k];
-      lobbyData[offCode] = { host: 'Worldwide Wheels', ends: offEnds };
-      const official =
-        '<div class="menu"><button class="mb" data-a="tnjoin" data-v="' +
-        offCode +
-        '"><b>🌍 Worldwide Wheels Official</b><small>Hosted by Worldwide Wheels · ' +
-        Math.max(1, Math.ceil((offEnds - now) / 60000)) +
-        ' min left · a new one every 30 min · tap to join</small></button></div>';
-      el.innerHTML = official + (open.length
-        ? '<div class="menu">' +
-          open
-            .map(
-              ([code, t]) =>
-                '<button class="mb" data-a="tnjoin" data-v="' +
-                code +
-                '"><b>' +
-                esc(t.host) +
-                '\'s tournament</b><small>' +
-                Math.max(1, Math.ceil((t.ends - now) / 60000)) +
-                ' min left · tap to join</small></button>',
-            )
-            .join('') +
-          '</div>'
-        : '<span class="hint">No player tournaments open right now. Host one!</span>');
+        rows = Object.entries(lobbyData).filter(([, t]) => t.ends > now);
+      el.innerHTML =
+        '<div class="tng">' +
+        rows
+          .map(
+            ([code, t]) =>
+              '<div class="card tnc"><b>' +
+              (t.off ? t.icon + ' ' + esc(t.host) : esc(t.host) + '\'s tournament') +
+              '</b><small>' +
+              (t.off ? 'Official · ' : 'Player · ') +
+              Math.max(1, Math.ceil((t.ends - now) / 60000)) +
+              ' min left</small>' +
+              table(code) +
+              '<button class="btn" data-a="tnjoin" data-v="' +
+              code +
+              '">Join</button></div>',
+          )
+          .join('') +
+        '</div>';
+      for (const [code] of rows)
+        if (!tw[code])
+          tw[code] = window.cloud.tourney.watchScore(code, sc => {
+            tables[code] = sc;
+            draw();
+          });
+    };
+    lobbyStop = window.cloud.tourney.watchLobby(all => {
+      const now = window.cloud.mp.now();
+      lobbyData = {};
+      // 7 official tournaments running side by side, each 30 min, starting at different times
+      OFFICIAL.forEach((o, i) => {
+        const shift = (i * OFF_MS) / OFFICIAL.length,
+          slot = Math.floor((now - shift) / OFF_MS);
+        lobbyData['WWOFF' + i + '_' + slot] = { host: o.n, icon: o.i, off: 1, ends: (slot + 1) * OFF_MS + shift };
+      });
+      for (const k in all) if (all[k].ends > now) lobbyData[k] = all[k];
+      draw();
     });
+    const stopLobby = lobbyStop;
+    lobbyStop = () => {
+      stopLobby && stopLobby();
+      for (const k in tw) tw[k] && tw[k]();
+    };
     onlineStop = () => {
       if (lobbyStop) lobbyStop();
       lobbyStop = null;
@@ -2227,12 +2258,28 @@ const SONGS = [];
     );
     if (won) confetti(80);
   }
+  function tnTable(show) {
+    let el = $('tntab');
+    if (!show) return el && el.remove();
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tntab';
+      document.body.appendChild(el);
+    }
+    const R = tnStandings();
+    el.innerHTML =
+      '<b>🏆 Tournament table</b><ol>' +
+      R.map((r, i) => '<li class="' + (r.name === me.name ? 'me' : '') + '"><span>' + (i + 1) + '. ' + esc(r.name) + '</span><b>' + r.pts + ' pts</b></li>').join('') +
+      '</ol><button class="btn" id="tntabx">Close</button>';
+    $('tntabx').onclick = () => tnTable(false);
+  }
   async function tnStart(code, ends) {
     tn = { code, ends, pts: 0, scores: {}, done: false };
     tn.stop = window.cloud.tourney.watchScore(code, sc => tn && (tn.scores = sc));
     window.cloud.tourney.setPts(code, me.name, 0).catch(() => {});
     startMp(code);
-    toast('Tournament on · ' + TN_MIN + ' minutes · most points wins', 0, 'cp');
+    document.body.classList.add('tnon');
+    toast('Tournament on · most points wins · tap 📋 Table any time', 0, 'cp');
   }
   function tnStandings() {
     if (!tn) return [];
@@ -2243,6 +2290,8 @@ const SONGS = [];
   function tnFinish() {
     if (!tn || tn.done) return;
     tn.done = true;
+    tnTable(false);
+    document.body.classList.remove('tnon');
     const R = tnStandings(),
       win = R[0];
     if (tn.stop) tn.stop();
@@ -2285,6 +2334,8 @@ const SONGS = [];
       if (tn.stop) tn.stop();
       tn = null;
     }
+    tnTable(false);
+    document.body.classList.remove('tnon');
     if (!mpOn) return;
     mpOn = false;
     if (window.cloud && window.cloud.mp) window.cloud.mp.leave();
@@ -4791,6 +4842,7 @@ const SONGS = [];
       g = '+' + (((Math.min(rk[0].d, tot) - rk[i].d) / tot) * 100).toFixed(1) + '% behind';
     else if (i === 0 && rk.length > 1 && !rk[i].fin)
       g = '+' + (((rk[0].d - rk[1].d) / tot) * 100).toFixed(1) + '% ahead';
+    if (tn && $('tntab')) tnTable(true);
     if (tn && mode === 'mp') {
       const left = Math.max(0, tn.ends - window.cloud.mp.now()),
         R = tnStandings(),
