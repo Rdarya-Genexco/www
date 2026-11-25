@@ -7,6 +7,8 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
   initializeFirestore,
@@ -42,6 +44,8 @@ const auth = getAuth(app),
   /* skip undefined fields instead of rejecting the whole save */
   // long-polling fallback: copes with networks and proxies that drop Firestore's streaming connection
   db = initializeFirestore(app, { ignoreUndefinedProperties: true, experimentalAutoDetectLongPolling: true });
+// stay signed in on this device until you press Sign out, even after closing the game
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 window.cloud = {
   user: () => auth.currentUser,
   signIn: (e, p) => signInWithEmailAndPassword(auth, e, p),

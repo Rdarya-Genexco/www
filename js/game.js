@@ -276,6 +276,8 @@ const SONGS = [];
     }
   }
   const bootCloud = () => window.bootDone && window.bootDone('cloud');
+  // emails signed in on this device, so switching back is one tap (the password is never stored)
+  const accts = () => LS('ghatrun-accounts', []);
   addEventListener('cloudauth', e => {
     const was = cUser;
     cUser = e.detail;
@@ -284,6 +286,7 @@ const SONGS = [];
       bootCloud();
     }
     if (cUser && (!was || was.uid !== cUser.uid)) {
+      if (cUser.email) SS('ghatrun-accounts', [cUser.email, ...accts().filter(x => x !== cUser.email)].slice(0, 6));
       cReady = false;
       cloudPull().finally(bootCloud);
     } else if (
@@ -345,6 +348,13 @@ const SONGS = [];
       );
     ovSet(
       '<h1 class="sm">Online save</h1><span class="hint">Sign in to keep your drivers and points on any browser or device. Without an account they are only saved in this browser.</span>' +
+        (accts().length
+          ? '<div class="chips">Accounts on this device: ' +
+            accts()
+              .map(x => '<button class="chip" data-a="cpick" data-v="' + esc(x) + '">' + esc(x) + '</button>')
+              .join('') +
+            '</div>'
+          : '') +
         '<input id="cem" class="fld" type="email" placeholder="Email" autocomplete="email" aria-label="Email" value="' +
         esc(em || '') +
         '">' +
@@ -2090,9 +2100,26 @@ const SONGS = [];
     const table = code => {
       const R = Object.values(tables[code] || {}).sort((x, y) => y.pts - x.pts);
       return R.length
-        ? '<ol class="tnt">' + R.slice(0, 5).map(r => '<li><span>' + esc(r.name) + '</span><b>' + r.pts + '</b></li>').join('') + '</ol>'
+        ? '<ol class="tnt">' +
+            R.slice(0, 6)
+              .map(
+                (r, i) =>
+                  '<li class="' +
+                  (i === 0 ? 'win' : R.length > 1 && i === Math.min(R.length, 6) - 1 ? 'lose' : '') +
+                  '"><span>' +
+                  (i === 0 ? '🥇 ' : '') +
+                  esc(r.name) +
+                  '</span><b>' +
+                  r.pts +
+                  '</b></li>',
+              )
+              .join('') +
+            '</ol>'
         : '<small class="tnt0">No players yet</small>';
     };
+    // redraw at most twice a second, however fast the scores come in
+    let drawT = 0;
+    const soon = () => drawT || (drawT = setTimeout(() => ((drawT = 0), draw()), 500));
     const draw = () => {
       const el = $('tnl');
       if (!el) return;
@@ -2103,16 +2130,16 @@ const SONGS = [];
         rows
           .map(
             ([code, t]) =>
-              '<div class="card tnc"><b>' +
+              '<div class="card tnc"><div class="tni"><b>' +
               (t.off ? t.icon + ' ' + esc(t.host) : esc(t.host) + '\'s tournament') +
               '</b><small>' +
               (t.off ? 'Official · ' : 'Player · ') +
               Math.max(1, Math.ceil((t.ends - now) / 60000)) +
-              ' min left</small>' +
-              table(code) +
-              '<button class="btn" data-a="tnjoin" data-v="' +
+              ' min left</small><button class="btn" data-a="tnjoin" data-v="' +
               code +
-              '">Join</button></div>',
+              '">Join</button></div><div class="tnr">' +
+              table(code) +
+              '</div></div>',
           )
           .join('') +
         '</div>';
@@ -2120,7 +2147,7 @@ const SONGS = [];
         if (!tw[code])
           tw[code] = window.cloud.tourney.watchScore(code, sc => {
             tables[code] = sc;
-            draw();
+            soon();
           });
     };
     lobbyStop = window.cloud.tourney.watchLobby(all => {
@@ -2258,6 +2285,7 @@ const SONGS = [];
     );
     if (won) confetti(80);
   }
+  let tnTabT = 0;
   function tnTable(show) {
     let el = $('tntab');
     if (!show) return el && el.remove();
@@ -3999,6 +4027,12 @@ const SONGS = [];
     else if (a === 'cup') cloudGo('up');
     else if (a === 'creset') cloudGo('reset');
     else if (a === 'cout') cloudSignOut();
+    else if (a === 'cpick') {
+      const e = $('cem');
+      if (e) e.value = v;
+      const p = $('cpw');
+      if (p) p.focus();
+    }
     else if (a === 'col') {
       selCol = v;
       ov.querySelectorAll('.sw').forEach(s => s.classList.toggle('on', s.dataset.v === v));
@@ -4842,7 +4876,7 @@ const SONGS = [];
       g = '+' + (((Math.min(rk[0].d, tot) - rk[i].d) / tot) * 100).toFixed(1) + '% behind';
     else if (i === 0 && rk.length > 1 && !rk[i].fin)
       g = '+' + (((rk[0].d - rk[1].d) / tot) * 100).toFixed(1) + '% ahead';
-    if (tn && $('tntab')) tnTable(true);
+    if (tn && $('tntab') && (tnTabT = (tnTabT || 0) + 1) % 30 === 0) tnTable(true);
     if (tn && mode === 'mp') {
       const left = Math.max(0, tn.ends - window.cloud.mp.now()),
         R = tnStandings(),

@@ -2219,3 +2219,35 @@ body.tnon.play #tnbtn {
 #tntab li.me {
   color: #ffc15e;
 }
+/* tournament card: details and Join on the left, the live table opposite on the right */
+#ov .tng {
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
+}
+#ov .tnc {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 14px;
+}
+#ov .tni {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 45%;
+}
+#ov .tnr {
+  flex: 1 1 55%;
+  border-left: 1px solid rgba(255, 244, 224, 0.2);
+  padding-left: 12px;
+}
+.tnt li.win {
+  color: #6fe38a;
+  font-weight: 800;
+}
+.tnt li.lose {
+  color: #ff7a7a;
+}
+#tntab .btn {
+  padding: 4px 16px 3px;
+  font-size: 16px;
+  min-height: 0;
+}
